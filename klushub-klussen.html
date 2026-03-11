@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klushub – Openstaande Klussen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue-dark:   #0B1F4A;
+    --blue-mid:    #1A3A7A;
+    --blue-light:  #2E5FBE;
+    --blue-glow:   #4A80E8;
+    --yellow:      #F5C200;
+    --yellow-light:#FFD740;
+    --yellow-pale: #FFF8D6;
+    --white:       #FFFFFF;
+    --gray-soft:   #F4F6FB;
+    --gray-border: #E4E9F2;
+    --gray-text:   #5A6480;
+    --text-dark:   #0B1F4A;
+    --green:       #16A34A;
+    --green-bg:    #DCFCE7;
+    --orange:      #EA580C;
+    --orange-bg:   #FFF0E6;
+    --sidebar-w:   300px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--gray-soft);
+    color: var(--text-dark);
+    overflow-x: hidden;
+  }
+  h1,h2,h3,h4,h5 { font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.5px; }
+
+  /* ── NAV ───────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5vw; height: 72px;
+    background: rgba(11,31,74,0.97);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(245,194,0,0.15);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-icon {
+    width: 38px; height: 38px; background: var(--yellow);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 20px;
+    color: var(--blue-dark);
+  }
+  .logo-text { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 24px; color: var(--white); }
+  .logo-text span { color: var(--yellow); }
+
+  .nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
+  .nav-links a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 15px; font-weight: 600; transition: color .2s; }
+  .nav-links a:hover, .nav-links a.active { color: var(--yellow); }
+  .nav-cta {
+    background: var(--yellow); color: var(--blue-dark) !important;
+    padding: 9px 22px; border-radius: 8px; font-weight: 700 !important;
+    transition: background .2s !important;
+  }
+  .nav-cta:hover { background: var(--yellow-light) !important; }
+
+  .nav-right { display: flex; align-items: center; gap: 16px; }
+  .nav-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue-light), var(--blue-glow));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 14px;
+    color: var(--white); cursor: pointer; border: 2px solid rgba(255,255,255,0.2);
+  }
+
+  /* ── PAGE HEADER ───────────────────────────── */
+  .page-header {
+    margin-top: 72px;
+    background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+    padding: 40px 5vw 36px;
+    position: relative; overflow: hidden;
+  }
+  .page-header::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 50% 120% at 100% 50%, rgba(74,128,232,0.2) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-inner {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    position: relative; z-index: 1; flex-wrap: wrap; gap: 20px;
+  }
+  .header-left { }
+  .breadcrumb {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 10px;
+  }
+  .breadcrumb a { color: rgba(255,255,255,0.5); text-decoration: none; }
+  .breadcrumb a:hover { color: var(--yellow); }
+  .breadcrumb-sep { font-size: 10px; }
+
+  .page-header h1 {
+    font-size: 40px; font-weight: 800; color: var(--white);
+    letter-spacing: -0.5px; line-height: 1.05; margin-bottom: 8px;
+  }
+  .page-header h1 em { font-style: normal; color: var(--yellow); }
+  .page-header p { font-size: 15px; color: rgba(255,255,255,0.6); font-weight: 400; }
+
+  .header-stats {
+    display: flex; gap: 24px;
+  }
+  .hstat {
+    text-align: center;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 14px 22px;
+  }
+  .hstat-num {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800;
+    color: var(--yellow); line-height: 1;
+  }
+  .hstat-label { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+
+  /* ── TOOLBAR ───────────────────────────────── */
+  .toolbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-border);
+    padding: 0 5vw;
+    display: flex; align-items: center; gap: 16px;
+    height: 58px; position: sticky; top: 72px; z-index: 100;
+  }
+
+  .search-wrap {
+    position: relative; flex: 1; max-width: 360px;
+  }
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 15px; color: var(--gray-text); pointer-events: none;
+  }
+  .search-input {
+    width: 100%; padding: 8px 12px 8px 36px;
+    border: 1.5px solid var(--gray-border); border-radius: 8px;
+    font-family: 'Nunito', sans-serif; font-size: 14px;
+    color: var(--text-dark); background: var(--gray-soft);
+    outline: none; transition: border .2s, background .2s;
+  }
+  .search-input:focus { border-color: var(--blue-light); background: var(--white); }
+  .search-input::placeholder { color: var(--gray-text); }
+
+  .toolbar-sep { width: 1px; height: 28px; background: var(--gray-border); }
+
+  .sort-label { font-size: 13px; color: var(--gray-text); white-space: nowrap; }
+  .sort-select {
+    padding: 7px 12px; border: 1.5px solid var(--gray-border); border-radius: 8px;
+    font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--text-dark); background: var(--gray-soft); outline: none; cursor: pointer;
+  }
+
+  .toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .view-btn {
+    width: 34px; height: 34px; border-radius: 7px;
+    border: 1.5px solid var(--gray-border); background: var(--gray-soft);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px; transition: all .15s; color: var(--gray-text);
+  }
+  .view-btn.active { border-color: var(--blue-light); background: rgba(46,95,190,0.08); color: var(--blue-light); }
+  .view-btn:hover { border-color: var(--blue-light); color: var(--blue-light); }
+
+  .result-count { font-size: 13px; color: var(--gray-text); white-space: nowrap; }
+  .result-count strong { color: var(--text-dark); }
+
+  /* ── LAYOUT ───────────────────────────────── */
+  .page-body {
+    display: flex; align-items: flex-start;
+    max-width: 1400px; margin: 0 auto;
+    padding: 28px 5vw 60px;
+    gap: 28px;
+  }
+
+  /* ── SIDEBAR ──────────────────────────────── */
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    position: sticky; top: 132px;
+  }
+
+  .filter-card {
+    background: var(--white); border-radius: 16px;
+    border: 1px solid var(--gray-border);
+    overflow: hidden; margin-bottom: 16px;
+  }
+
+  .filter-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--gray-border);
+  }
+  .filter-header h3 {
+    font-size: 15px; font-weight: 700; color: var(--text-dark);
+  }
+  .filter-reset {
+    font-size: 12px; color: var(--blue-light); font-weight: 600;
+    cursor: pointer; background: none; border: none;
+    font-family: 'Nunito', sans-serif;
+  }
+  .filter-reset:hover { text-decoration: underline; }
+
+  .filter-body { padding: 16px 20px; }
+
+  .filter-section { margin-bottom: 22px; }
+  .filter-section:last-child { margin-bottom: 0; }
+
+  .filter-section-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--gray-text); margin-bottom: 10px;
+  }
+
+  .checkbox-list { display: flex; flex-direction: column; gap: 8px; }
+  .checkbox-item {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; font-size: 14px; color: var(--text-dark); font-weight: 500;
+  }
+  .checkbox-item input[type="checkbox"] {
+    width: 16px; height: 16px; accent-color: var(--blue-light); cursor: pointer;
+  }
+  .checkbox-count {
+    margin-left: auto; font-size: 11px; color: var(--gray-text);
+    background: var(--gray-soft); border-radius: 100px; padding: 1px 7px;
+  }
+
+  .range-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .range-labels { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-dark); }
+  input[type="range"] {
+    width: 100%; accent-color: var(--blue-light); cursor: pointer;
+  }
+
+  .radio-list { display: flex; flex-direction: column; gap: 8px; }
+  .radio-item {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; font-size: 14px; color: var(--text-dark); font-weight: 500;
+  }
+  .radio-item input[type="radio"] { accent-color: var(--blue-light); cursor: pointer; }
+
+  .tag-filter { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag-chip {
+    padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 600;
+    border: 1.5px solid var(--gray-border); background: var(--gray-soft);
+    color: var(--gray-text); cursor: pointer; transition: all .15s;
+  }
+  .tag-chip.on { border-color: var(--blue-light); background: rgba(46,95,190,0.08); color: var(--blue-light); }
+  .tag-chip:hover { border-color: var(--blue-light); }
+
+  /* ── ACTIVE FILTERS BAR ───────────────────── */
+  .active-filters {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .active-filters-label { font-size: 13px; color: var(--gray-text); font-weight: 600; }
+  .af-tag {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(46,95,190,0.1); border: 1px solid rgba(46,95,190,0.2);
+    color: var(--blue-light); font-size: 12px; font-weight: 700;
+    padding: 4px 10px; border-radius: 100px; cursor: pointer;
+    transition: background .15s;
+  }
+  .af-tag:hover { background: rgba(46,95,190,0.18); }
+  .af-tag .x { font-size: 14px; line-height: 1; }
+
+  /* ── KLUS CARDS ───────────────────────────── */
+  .klussen-grid {
+    flex: 1; min-width: 0;
+  }
+
+  .cards-list { display: flex; flex-direction: column; gap: 16px; }
+
+  .klus-card {
+    background: var(--white); border-radius: 18px;
+    border: 1px solid var(--gray-border);
+    padding: 28px;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+    position: relative; cursor: pointer;
+  }
+  .klus-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 48px rgba(11,31,74,0.1);
+    border-color: rgba(46,95,190,0.3);
+  }
+  .klus-card.urgent { border-left: 4px solid var(--orange); }
+  .klus-card.new { border-left: 4px solid var(--green); }
+
+  .card-top-row {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px;
+  }
+
+  .card-badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 100px; font-size: 11px; font-weight: 700;
+    white-space: nowrap;
+  }
+  .badge-category { background: var(--yellow-pale); color: #7A5E00; }
+  .badge-new { background: var(--green-bg); color: var(--green); }
+  .badge-urgent { background: var(--orange-bg); color: var(--orange); }
+  .badge-bids {
+    background: rgba(46,95,190,0.1); color: var(--blue-light);
+  }
+
+  .card-menu-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--gray-text); font-size: 20px; padding: 0 4px;
+    line-height: 1; border-radius: 6px; transition: background .15s;
+  }
+  .card-menu-btn:hover { background: var(--gray-soft); }
+
+  .card-title {
+    font-size: 20px; font-weight: 800; color: var(--text-dark);
+    margin-bottom: 8px; line-height: 1.1;
+  }
+
+  .card-desc {
+    font-size: 14px; color: var(--gray-text); line-height: 1.6;
+    font-weight: 400; margin-bottom: 18px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .card-meta {
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .meta-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 13px; color: var(--gray-text); font-weight: 500;
+  }
+  .meta-item .icon { font-size: 14px; }
+  .meta-item strong { color: var(--text-dark); font-weight: 700; }
+
+  .card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 18px; border-top: 1px solid var(--gray-border);
+    gap: 12px; flex-wrap: wrap;
+  }
+
+  .card-footer-left { display: flex; align-items: center; gap: 12px; }
+
+  .budget-box {
+    display: flex; flex-direction: column;
+  }
+  .budget-label { font-size: 11px; color: var(--gray-text); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .budget-amount {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 800;
+    color: var(--text-dark); line-height: 1;
+  }
+  .budget-amount span { font-size: 14px; font-family: 'Nunito', sans-serif; color: var(--gray-text); font-weight: 500; }
+
+  .deadline-box {
+    display: flex; flex-direction: column;
+    padding-left: 12px; border-left: 1px solid var(--gray-border);
+  }
+  .deadline-label { font-size: 11px; color: var(--gray-text); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .deadline-val { font-size: 14px; font-weight: 700; color: var(--text-dark); }
+  .deadline-val.urgent { color: var(--orange); }
+
+  .card-footer-right { display: flex; align-items: center; gap: 10px; }
+
+  .btn-save {
+    width: 38px; height: 38px; border-radius: 9px;
+    border: 1.5px solid var(--gray-border); background: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; cursor: pointer; transition: all .15s; color: var(--gray-text);
+  }
+  .btn-save:hover { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-pale); }
+  .btn-save.saved { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-pale); }
+
+  .btn-bid {
+    padding: 10px 22px; border-radius: 9px;
+    background: var(--blue-dark); color: var(--white);
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px;
+    border: none; cursor: pointer; transition: background .2s, transform .15s;
+    white-space: nowrap;
+  }
+  .btn-bid:hover { background: var(--blue-light); transform: translateY(-1px); }
+
+  .btn-bid-outline {
+    padding: 10px 22px; border-radius: 9px;
+    background: transparent; color: var(--blue-dark);
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px;
+    border: 1.5px solid var(--gray-border); cursor: pointer; transition: all .2s;
+  }
+  .btn-bid-outline:hover { border-color: var(--blue-light); color: var(--blue-light); }
+
+  /* ── CARD IMAGES ─────────────────────────── */
+  .card-images {
+    display: flex; gap: 8px; margin-bottom: 16px;
+  }
+  .card-img {
+    width: 80px; height: 60px; border-radius: 10px;
+    object-fit: cover; background: var(--gray-border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0; overflow: hidden;
+  }
+  .card-img-placeholder { background: var(--gray-soft); color: var(--gray-text); border: 1px solid var(--gray-border); }
+  .card-img-more {
+    width: 80px; height: 60px; border-radius: 10px;
+    background: var(--gray-soft); border: 1px solid var(--gray-border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--gray-text); flex-shrink: 0;
+  }
+
+  /* ── POSTER INFO ─────────────────────────── */
+  .poster-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .poster-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue-mid), var(--blue-light));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 11px;
+    color: var(--white); flex-shrink: 0;
+  }
+  .poster-name { font-size: 13px; font-weight: 600; color: var(--text-dark); }
+  .poster-dot { color: var(--gray-border); }
+  .poster-time { font-size: 12px; color: var(--gray-text); }
+
+  /* ── MODAL / BID OVERLAY ──────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(7, 14, 34, 0.6);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--white); border-radius: 24px;
+    width: 100%; max-width: 560px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 40px 100px rgba(7,14,34,0.3);
+    transform: translateY(20px); transition: transform .25s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--gray-border);
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px;
+  }
+  .modal-header h2 { font-size: 24px; font-weight: 800; color: var(--text-dark); }
+  .modal-header p { font-size: 13px; color: var(--gray-text); margin-top: 3px; }
+  .modal-close {
+    background: var(--gray-soft); border: none; cursor: pointer;
+    width: 32px; height: 32px; border-radius: 50%; font-size: 18px;
+    color: var(--gray-text); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background .15s;
+  }
+  .modal-close:hover { background: var(--gray-border); }
+
+  .modal-body { padding: 24px 32px; }
+
+  .klus-summary {
+    background: var(--gray-soft); border-radius: 14px; padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .klus-summary-icon { font-size: 28px; }
+  .klus-summary-title { font-size: 16px; font-weight: 700; color: var(--text-dark); }
+  .klus-summary-meta { font-size: 13px; color: var(--gray-text); }
+
+  .form-row { margin-bottom: 18px; }
+  .form-label {
+    display: block; font-size: 12px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--gray-text); margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid var(--gray-border); border-radius: 10px;
+    font-family: 'Nunito', sans-serif; font-size: 14px;
+    color: var(--text-dark); background: var(--gray-soft);
+    outline: none; transition: border .2s, background .2s;
+  }
+  .form-input:focus { border-color: var(--blue-light); background: var(--white); }
+
+  .price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .form-hint { font-size: 12px; color: var(--gray-text); margin-top: 5px; }
+
+  .modal-footer {
+    padding: 20px 32px 28px;
+    border-top: 1px solid var(--gray-border);
+    display: flex; gap: 10px;
+  }
+  .modal-footer .btn-cancel {
+    flex: 1; padding: 12px;
+    border: 1.5px solid var(--gray-border); border-radius: 10px;
+    background: transparent; color: var(--gray-text);
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px;
+    cursor: pointer; transition: all .15s;
+  }
+  .modal-footer .btn-cancel:hover { border-color: var(--blue-light); color: var(--blue-light); }
+  .modal-footer .btn-submit {
+    flex: 2; padding: 12px;
+    background: var(--blue-dark); color: var(--white);
+    border: none; border-radius: 10px;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px;
+    cursor: pointer; transition: background .2s;
+  }
+  .modal-footer .btn-submit:hover { background: var(--blue-light); }
+
+  /* ── EMPTY / LOAD MORE ───────────────────── */
+  .load-more {
+    text-align: center; padding: 32px 0;
+  }
+  .btn-load {
+    padding: 13px 36px; border-radius: 10px;
+    border: 1.5px solid var(--gray-border); background: var(--white);
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px;
+    color: var(--text-dark); cursor: pointer; transition: all .2s;
+  }
+  .btn-load:hover { border-color: var(--blue-light); color: var(--blue-light); }
+
+  /* ── TOAST ───────────────────────────────── */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--blue-dark); color: var(--white);
+    padding: 14px 24px; border-radius: 12px;
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+    z-index: 2000; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── RESPONSIVE ──────────────────────────── */
+  @media (max-width: 960px) {
+    .sidebar { display: none; }
+    .header-stats { display: none; }
+  }
+  @media (max-width: 640px) {
+    .nav-links { display: none; }
+    .page-body { padding: 16px 4vw 40px; }
+    .klus-card { padding: 20px; }
+    .card-meta { gap: 10px; }
+    .modal-body, .modal-header, .modal-footer { padding-left: 20px; padding-right: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="klushub.html" class="logo">
+    <div class="logo-icon">K</div>
+    <span class="logo-text">Klus<span>hub</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="klushub.html">Home</a></li>
+    <li><a href="#" class="active">Openstaande Klussen</a></li>
+    <li><a href="klushub.html#aannemers">Aannemers</a></li>
+    <li><a href="klushub.html#prijzen">Prijzen</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="klushub.html#plaatsen" class="nav-cta" style="text-decoration:none; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px; padding:9px 22px; border-radius:8px;">Klus plaatsen</a>
+    <div class="nav-avatar">RB</div>
+  </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="breadcrumb">
+        <a href="klushub.html">Home</a>
+        <span class="breadcrumb-sep">›</span>
+        <span>Openstaande klussen</span>
+      </div>
+      <h1>Openstaande <em>Klussen</em></h1>
+      <p>Bekijk alle projecten, filter op jouw specialisme en breng een bod uit.</p>
+    </div>
+    <div class="header-stats">
+      <div class="hstat">
+        <div class="hstat-num" id="totalCount">147</div>
+        <div class="hstat-label">Open klussen</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-num">38</div>
+        <div class="hstat-label">Nieuw vandaag</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-num">€ 3.200</div>
+        <div class="hstat-label">Gem. budget</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" class="search-input" placeholder="Zoek op trefwoord, stad…" id="searchInput" oninput="filterCards()">
+  </div>
+  <div class="toolbar-sep"></div>
+  <span class="sort-label">Sorteren:</span>
+  <select class="sort-select" onchange="sortCards(this.value)">
+    <option value="nieuwst">Nieuwste eerst</option>
+    <option value="budget-hoog">Budget: hoog → laag</option>
+    <option value="budget-laag">Budget: laag → hoog</option>
+    <option value="deadline">Deadline: snel eerst</option>
+    <option value="biedingen">Minste biedingen</option>
+  </select>
+  <div class="toolbar-right">
+    <span class="result-count"><strong id="visibleCount">12</strong> klussen</span>
+    <button class="view-btn active" title="Lijst" onclick="setView('list', this)">☰</button>
+    <button class="view-btn" title="Grid" onclick="setView('grid', this)">⊞</button>
+  </div>
+</div>
+
+<!-- PAGE BODY -->
+<div class="page-body">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- Filter: Categorie -->
+    <div class="filter-card">
+      <div class="filter-header">
+        <h3>🏷️ Filters</h3>
+        <button class="filter-reset" onclick="resetFilters()">Alles wissen</button>
+      </div>
+      <div class="filter-body">
+
+        <div class="filter-section">
+          <div class="filter-section-title">Categorie</div>
+          <div class="checkbox-list">
+            <label class="checkbox-item">
+              <input type="checkbox" checked onchange="filterCards()"> 🚿 Badkamer
+              <span class="checkbox-count">34</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" checked onchange="filterCards()"> 🍳 Keuken
+              <span class="checkbox-count">22</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" checked onchange="filterCards()"> 🏠 Dak & Gevel
+              <span class="checkbox-count">18</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" checked onchange="filterCards()"> 🔨 Aanbouw & Uitbouw
+              <span class="checkbox-count">15</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" checked onchange="filterCards()"> ⚡ Elektra
+              <span class="checkbox-count">12</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" checked onchange="filterCards()"> 🎨 Schilderwerk
+              <span class="checkbox-count">19</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" checked onchange="filterCards()"> 🪵 Vloeren
+              <span class="checkbox-count">11</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" checked onchange="filterCards()"> 🏡 Tuin & Bestrating
+              <span class="checkbox-count">16</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-title">Budget</div>
+          <div class="range-wrap">
+            <div class="range-labels">
+              <span>€ 0</span>
+              <span id="budgetLabel">€ 25.000</span>
+            </div>
+            <input type="range" min="0" max="25000" step="500" value="25000"
+              id="budgetRange" oninput="updateBudgetLabel(this.value); filterCards()">
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-title">Regio</div>
+          <div class="tag-filter" id="regio-tags">
+            <span class="tag-chip on" onclick="toggleTag(this)">Amsterdam</span>
+            <span class="tag-chip on" onclick="toggleTag(this)">Rotterdam</span>
+            <span class="tag-chip on" onclick="toggleTag(this)">Utrecht</span>
+            <span class="tag-chip on" onclick="toggleTag(this)">Den Haag</span>
+            <span class="tag-chip on" onclick="toggleTag(this)">Eindhoven</span>
+            <span class="tag-chip on" onclick="toggleTag(this)">Haarlem</span>
+            <span class="tag-chip" onclick="toggleTag(this)">Groningen</span>
+            <span class="tag-chip" onclick="toggleTag(this)">Tilburg</span>
+            <span class="tag-chip" onclick="toggleTag(this)">Breda</span>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-title">Deadline biedingen</div>
+          <div class="radio-list">
+            <label class="radio-item">
+              <input type="radio" name="deadline" value="all" checked onchange="filterCards()"> Alle deadlines
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="deadline" value="today" onchange="filterCards()"> Vandaag
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="deadline" value="week" onchange="filterCards()"> Deze week
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="deadline" value="month" onchange="filterCards()"> Deze maand
+            </label>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-title">Biedingen</div>
+          <div class="radio-list">
+            <label class="radio-item">
+              <input type="radio" name="bids" value="all" checked onchange="filterCards()"> Alle klussen
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="bids" value="few" onchange="filterCards()"> Minder dan 3 biedingen
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="bids" value="none" onchange="filterCards()"> Nog geen biedingen
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Promo -->
+    <div style="background:linear-gradient(135deg,var(--blue-dark),var(--blue-mid)); border-radius:16px; padding:22px; color:white;">
+      <div style="font-size:24px; margin-bottom:8px;">🚀</div>
+      <div style="font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:800; margin-bottom:6px;">Pro Aannemer</div>
+      <div style="font-size:13px; color:rgba(255,255,255,.65); line-height:1.5; margin-bottom:16px;">Onbeperkt bieden, verified badge en prioriteit in de zoekresultaten.</div>
+      <a href="klushub.html#prijzen" style="display:block; text-align:center; background:var(--yellow); color:var(--blue-dark); padding:10px; border-radius:9px; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:15px; text-decoration:none; transition:background .2s;">Bekijk Pro →</a>
+    </div>
+
+  </aside>
+
+  <!-- KLUSSEN LIST -->
+  <div class="klussen-grid">
+
+    <!-- Active filters -->
+    <div class="active-filters" id="activeFilters">
+      <span class="active-filters-label">Actieve filters:</span>
+      <span class="af-tag" onclick="removeFilter(this)">Badkamer <span class="x">×</span></span>
+      <span class="af-tag" onclick="removeFilter(this)">Amsterdam <span class="x">×</span></span>
+      <span class="af-tag" onclick="removeFilter(this)">Budget ≤ €25.000 <span class="x">×</span></span>
+    </div>
+
+    <div class="cards-list" id="cardsList">
+
+      <!-- CARD 1 — Badkamer renovatie -->
+      <div class="klus-card new" data-category="badkamer" data-budget="8500" data-bids="2" data-city="amsterdam">
+        <div class="card-top-row">
+          <div class="card-badges">
+            <span class="badge badge-category">🚿 Badkamer</span>
+            <span class="badge badge-new">✦ Nieuw</span>
+            <span class="badge badge-bids">💬 2 biedingen</span>
+          </div>
+          <button class="card-menu-btn" title="Meer opties">⋯</button>
+        </div>
+
+        <div class="poster-row">
+          <div class="poster-avatar">SV</div>
+          <span class="poster-name">Sandra V.</span>
+          <span class="poster-dot">·</span>
+          <span class="poster-time">2 uur geleden</span>
+        </div>
+
+        <div class="card-title">Volledige badkamer renovatie — ca. 8 m²</div>
+        <div class="card-desc">Bestaande badkamer volledig strippen en opnieuw betegelen. Nieuwe inloopdouche, hangend toilet en dubbele wastafel plaatsen. Alle leidingwerk vernieuwen. Vloerverwarming gewenst.</div>
+
+        <div class="card-images">
+          <div class="card-img card-img-placeholder">🚿</div>
+          <div class="card-img card-img-placeholder">🔧</div>
+          <div class="card-img-more">+3 foto's</div>
+        </div>
+
+        <div class="card-meta">
+          <div class="meta-item"><span class="icon">📍</span> <strong>Amsterdam</strong>&nbsp;Oost</div>
+          <div class="meta-item"><span class="icon">📐</span> <strong>8 m²</strong></div>
+          <div class="meta-item"><span class="icon">🏠</span> Tussenwoning</div>
+          <div class="meta-item"><span class="icon">🗓️</span> Uitvoering&nbsp;<strong>april 2025</strong></div>
+        </div>
+
+        <div class="card-footer">
+          <div class="card-footer-left">
+            <div class="budget-box">
+              <span class="budget-label">Richtbudget</span>
+              <div class="budget-amount">€ 8.500 <span>incl. BTW</span></div>
+            </div>
+            <div class="deadline-box">
+              <span class="deadline-label">Deadline bieden</span>
+              <div class="deadline-val">14 mrt 2025</div>
+            </div>
+          </div>
+          <div class="card-footer-right">
+            <button class="btn-save" title="Opslaan" onclick="toggleSave(this)">♡</button>
+            <button class="btn-bid-outline" onclick="openModal('Volledige badkamer renovatie — ca. 8 m²', 'Amsterdam · 8 m²', this)">Details</button>
+            <button class="btn-bid" onclick="openModal('Volledige badkamer renovatie — ca. 8 m²', 'Amsterdam · 8 m²', this)">Bod uitbrengen →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 2 — Dakkapel -->
+      <div class="klus-card" data-category="dak" data-budget="14000" data-bids="5" data-city="rotterdam">
+        <div class="card-top-row">
+          <div class="card-badges">
+            <span class="badge badge-category">🏠 Dak & Gevel</span>
+            <span class="badge badge-bids">💬 5 biedingen</span>
+          </div>
+          <button class="card-menu-btn">⋯</button>
+        </div>
+        <div class="poster-row">
+          <div class="poster-avatar" style="background:linear-gradient(135deg,#1a6b3a,#2daa6a)">MK</div>
+          <span class="poster-name">Mark K.</span>
+          <span class="poster-dot">·</span>
+          <span class="poster-time">gisteren</span>
+        </div>
+        <div class="card-title">Dakkapel plaatsen — voorzijde jaren '30 woning</div>
+        <div class="card-desc">Dakkapel van ca. 4,5 m breed aan de voorzijde van de woning. Inclusief schilderwerk en dakbedekking. Gemeente vergunning is aangevraagd en in behandeling.</div>
+        <div class="card-meta">
+          <div class="meta-item"><span class="icon">📍</span> <strong>Rotterdam</strong>&nbsp;Zuid</div>
+          <div class="meta-item"><span class="icon">📐</span> <strong>4,5 m</strong> breed</div>
+          <div class="meta-item"><span class="icon">🏠</span> Jaren '30 woning</div>
+          <div class="meta-item"><span class="icon">🗓️</span> Uitvoering&nbsp;<strong>mei 2025</strong></div>
+        </div>
+        <div class="card-footer">
+          <div class="card-footer-left">
+            <div class="budget-box">
+              <span class="budget-label">Richtbudget</span>
+              <div class="budget-amount">€ 14.000 <span>incl. BTW</span></div>
+            </div>
+            <div class="deadline-box">
+              <span class="deadline-label">Deadline bieden</span>
+              <div class="deadline-val">20 mrt 2025</div>
+            </div>
+          </div>
+          <div class="card-footer-right">
+            <button class="btn-save" onclick="toggleSave(this)">♡</button>
+            <button class="btn-bid-outline" onclick="openModal('Dakkapel plaatsen — voorzijde jaren \'30 woning', 'Rotterdam · 4,5 m breed', this)">Details</button>
+            <button class="btn-bid" onclick="openModal('Dakkapel plaatsen — voorzijde jaren \'30 woning', 'Rotterdam · 4,5 m breed', this)">Bod uitbrengen →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 3 — URGENT -->
+      <div class="klus-card urgent" data-category="elektra" data-budget="2200" data-bids="1" data-city="utrecht">
+        <div class="card-top-row">
+          <div class="card-badges">
+            <span class="badge badge-category">⚡ Elektra</span>
+            <span class="badge badge-urgent">🔥 Urgent</span>
+            <span class="badge badge-bids">💬 1 bieding</span>
+          </div>
+          <button class="card-menu-btn">⋯</button>
+        </div>
+        <div class="poster-row">
+          <div class="poster-avatar" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">TH</div>
+          <span class="poster-name">Thomas H.</span>
+          <span class="poster-dot">·</span>
+          <span class="poster-time">3 uur geleden</span>
+        </div>
+        <div class="card-title">Meterkast vervangen + 12 groepen verdelen</div>
+        <div class="card-desc">Verouderde meterkast vervangen door nieuwe groepenkast met 12 groepen, aardlekschakelaar en piekstroombeveiliging. Woning uit 1978, huidige kast is overbelast.</div>
+        <div class="card-meta">
+          <div class="meta-item"><span class="icon">📍</span> <strong>Utrecht</strong>&nbsp;Centrum</div>
+          <div class="meta-item"><span class="icon">🏠</span> Appartement</div>
+          <div class="meta-item"><span class="icon">⚡</span> Installatie + certificering</div>
+          <div class="meta-item"><span class="icon">🗓️</span> Z.s.m. — <strong>deze week</strong></div>
+        </div>
+        <div class="card-footer">
+          <div class="card-footer-left">
+            <div class="budget-box">
+              <span class="budget-label">Richtbudget</span>
+              <div class="budget-amount">€ 2.200 <span>incl. BTW</span></div>
+            </div>
+            <div class="deadline-box">
+              <span class="deadline-label">Deadline bieden</span>
+              <div class="deadline-val urgent">⚡ Vandaag 18:00</div>
+            </div>
+          </div>
+          <div class="card-footer-right">
+            <button class="btn-save" onclick="toggleSave(this)">♡</button>
+            <button class="btn-bid-outline" onclick="openModal('Meterkast vervangen + 12 groepen verdelen', 'Utrecht · Appartement', this)">Details</button>
+            <button class="btn-bid" onclick="openModal('Meterkast vervangen + 12 groepen verdelen', 'Utrecht · Appartement', this)">Bod uitbrengen →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 4 — Keuken -->
+      <div class="klus-card new" data-category="keuken" data-budget="12000" data-bids="0" data-city="denhaag">
+        <div class="card-top-row">
+          <div class="card-badges">
+            <span class="badge badge-category">🍳 Keuken</span>
+            <span class="badge badge-new">✦ Nieuw</span>
+            <span class="badge" style="background:#F0F0F0;color:#888">💬 Nog geen biedingen</span>
+          </div>
+          <button class="card-menu-btn">⋯</button>
+        </div>
+        <div class="poster-row">
+          <div class="poster-avatar" style="background:linear-gradient(135deg,#d97706,#f59e0b)">LP</div>
+          <span class="poster-name">Linda P.</span>
+          <span class="poster-dot">·</span>
+          <span class="poster-time">1 uur geleden</span>
+        </div>
+        <div class="card-title">Keuken renovatie — nieuwe opstelling + eiland</div>
+        <div class="card-desc">Complete keukenrenovatie incl. nieuwe indeling met kookeiland. Keukenkastjes worden geleverd via IKEA, wij zoeken iemand voor montage, tegels, leidingwerk en stopcontacten.</div>
+        <div class="card-images">
+          <div class="card-img card-img-placeholder">🍳</div>
+          <div class="card-img card-img-placeholder">📐</div>
+        </div>
+        <div class="card-meta">
+          <div class="meta-item"><span class="icon">📍</span> <strong>Den Haag</strong>&nbsp;Segbroek</div>
+          <div class="meta-item"><span class="icon">📐</span> <strong>14 m²</strong></div>
+          <div class="meta-item"><span class="icon">🏠</span> Vrijstaand</div>
+          <div class="meta-item"><span class="icon">🗓️</span> Uitvoering&nbsp;<strong>juni 2025</strong></div>
+        </div>
+        <div class="card-footer">
+          <div class="card-footer-left">
+            <div class="budget-box">
+              <span class="budget-label">Richtbudget</span>
+              <div class="budget-amount">€ 12.000 <span>incl. BTW</span></div>
+            </div>
+            <div class="deadline-box">
+              <span class="deadline-label">Deadline bieden</span>
+              <div class="deadline-val">28 mrt 2025</div>
+            </div>
+          </div>
+          <div class="card-footer-right">
+            <button class="btn-save" onclick="toggleSave(this)">♡</button>
+            <button class="btn-bid-outline" onclick="openModal('Keuken renovatie — nieuwe opstelling + eiland', 'Den Haag · 14 m²', this)">Details</button>
+            <button class="btn-bid" onclick="openModal('Keuken renovatie — nieuwe opstelling + eiland', 'Den Haag · 14 m²', this)">Bod uitbrengen →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 5 — Schilderwerk -->
+      <div class="klus-card" data-category="schilderwerk" data-budget="3800" data-bids="7" data-city="haarlem">
+        <div class="card-top-row">
+          <div class="card-badges">
+            <span class="badge badge-category">🎨 Schilderwerk</span>
+            <span class="badge badge-bids">💬 7 biedingen</span>
+          </div>
+          <button class="card-menu-btn">⋯</button>
+        </div>
+        <div class="poster-row">
+          <div class="poster-avatar" style="background:linear-gradient(135deg,#0e7490,#22d3ee)">JB</div>
+          <span class="poster-name">Johan B.</span>
+          <span class="poster-dot">·</span>
+          <span class="poster-time">2 dagen geleden</span>
+        </div>
+        <div class="card-title">Schilderwerk buiten — kozijnen en geveldelen</div>
+        <div class="card-desc">Alle buitenkozijnen schuren, plamuren en schilderen (ca. 20 kozijnen). Daarnaast drie geveldelen inclusief boardbekleding. Tweelaags systeem gewenst.</div>
+        <div class="card-meta">
+          <div class="meta-item"><span class="icon">📍</span> <strong>Haarlem</strong>&nbsp;Noord</div>
+          <div class="meta-item"><span class="icon">🪟</span> <strong>20 kozijnen</strong></div>
+          <div class="meta-item"><span class="icon">🏠</span> Hoekwoning</div>
+          <div class="meta-item"><span class="icon">🗓️</span> Uitvoering&nbsp;<strong>zomer 2025</strong></div>
+        </div>
+        <div class="card-footer">
+          <div class="card-footer-left">
+            <div class="budget-box">
+              <span class="budget-label">Richtbudget</span>
+              <div class="budget-amount">€ 3.800 <span>incl. BTW</span></div>
+            </div>
+            <div class="deadline-box">
+              <span class="deadline-label">Deadline bieden</span>
+              <div class="deadline-val">5 apr 2025</div>
+            </div>
+          </div>
+          <div class="card-footer-right">
+            <button class="btn-save" onclick="toggleSave(this)">♡</button>
+            <button class="btn-bid-outline" onclick="openModal('Schilderwerk buiten — kozijnen en geveldelen', 'Haarlem · 20 kozijnen', this)">Details</button>
+            <button class="btn-bid" onclick="openModal('Schilderwerk buiten — kozijnen en geveldelen', 'Haarlem · 20 kozijnen', this)">Bod uitbrengen →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 6 — Zolder -->
+      <div class="klus-card new" data-category="aanbouw" data-budget="22000" data-bids="3" data-city="amsterdam">
+        <div class="card-top-row">
+          <div class="card-badges">
+            <span class="badge badge-category">🔨 Aanbouw & Uitbouw</span>
+            <span class="badge badge-new">✦ Nieuw</span>
+            <span class="badge badge-bids">💬 3 biedingen</span>
+          </div>
+          <button class="card-menu-btn">⋯</button>
+        </div>
+        <div class="poster-row">
+          <div class="poster-avatar" style="background:linear-gradient(135deg,#be123c,#f43f5e)">AW</div>
+          <span class="poster-name">Anne W.</span>
+          <span class="poster-dot">·</span>
+          <span class="poster-time">5 uur geleden</span>
+        </div>
+        <div class="card-title">Zolder ombouwen tot 2 slaapkamers + badkamer</div>
+        <div class="card-desc">Zolder van 65 m² opdelen in twee slaapkamers (elk ca. 18 m²) en een kleine badkamer. Inclusief dakramen, isolatie, stucwerk, elektra en sanitair. Traptoegang is aanwezig.</div>
+        <div class="card-images">
+          <div class="card-img card-img-placeholder">🏠</div>
+          <div class="card-img card-img-placeholder">📐</div>
+          <div class="card-img-more">+5 foto's</div>
+        </div>
+        <div class="card-meta">
+          <div class="meta-item"><span class="icon">📍</span> <strong>Amsterdam</strong>&nbsp;West</div>
+          <div class="meta-item"><span class="icon">📐</span> <strong>65 m²</strong></div>
+          <div class="meta-item"><span class="icon">🏠</span> Herenhuis</div>
+          <div class="meta-item"><span class="icon">🗓️</span> Uitvoering&nbsp;<strong>Q3 2025</strong></div>
+        </div>
+        <div class="card-footer">
+          <div class="card-footer-left">
+            <div class="budget-box">
+              <span class="budget-label">Richtbudget</span>
+              <div class="budget-amount">€ 22.000 <span>incl. BTW</span></div>
+            </div>
+            <div class="deadline-box">
+              <span class="deadline-label">Deadline bieden</span>
+              <div class="deadline-val">1 apr 2025</div>
+            </div>
+          </div>
+          <div class="card-footer-right">
+            <button class="btn-save" onclick="toggleSave(this)">♡</button>
+            <button class="btn-bid-outline" onclick="openModal('Zolder ombouwen tot 2 slaapkamers + badkamer', 'Amsterdam West · 65 m²', this)">Details</button>
+            <button class="btn-bid" onclick="openModal('Zolder ombouwen tot 2 slaapkamers + badkamer', 'Amsterdam West · 65 m²', this)">Bod uitbrengen →</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /cards-list -->
+
+    <div class="load-more">
+      <button class="btn-load" onclick="showToast('📋 Meer klussen worden geladen...')">Meer klussen laden (135 resterend)</button>
+    </div>
+
+  </div><!-- /klussen-grid -->
+</div><!-- /page-body -->
+
+<!-- BID MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <h2>Bod uitbrengen</h2>
+        <p id="modalSubtitle">Vul je offerte in voor dit project</p>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="klus-summary">
+        <div class="klus-summary-icon">🔨</div>
+        <div>
+          <div class="klus-summary-title" id="modalTitle">—</div>
+          <div class="klus-summary-meta" id="modalMeta">—</div>
+        </div>
+      </div>
+
+      <div class="price-row">
+        <div class="form-row" style="margin-bottom:0">
+          <label class="form-label">Jouw prijs (incl. BTW)</label>
+          <input class="form-input" type="text" placeholder="€ 7.850" id="bidPrice">
+          <div class="form-hint">Richtbudget klant: <strong id="modalBudget">€ 8.500</strong></div>
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label class="form-label">Verwachte doorlooptijd</label>
+          <input class="form-input" type="text" placeholder="Bijv. 5 werkdagen">
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:18px">
+        <label class="form-label">Beschikbaarheid vanaf</label>
+        <input class="form-input" type="date">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Persoonlijk bericht aan de klant</label>
+        <textarea class="form-input" rows="4" placeholder="Leg uit waarom jij de beste keuze bent. Beschrijf je aanpak, relevante ervaring en wat jou onderscheidt..."></textarea>
+        <div class="form-hint">Aannemers met een persoonlijk bericht worden 3× vaker gekozen.</div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Foto's van eerder werk (optioneel)</label>
+        <div style="border:2px dashed var(--gray-border); border-radius:10px; padding:20px; text-align:center; cursor:pointer; background:var(--gray-soft); color:var(--gray-text); font-size:14px; font-weight:500;">
+          📎 Sleep foto's hierheen of klik om te uploaden
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Annuleren</button>
+      <button class="btn-submit" onclick="submitBid()">Bod versturen ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✓ Bod verstuurd!</div>
+
+<script>
+  let currentBudget = '';
+
+  function openModal(title, meta, triggerEl) {
+    // Find budget from card
+    const card = triggerEl.closest('.klus-card');
+    const budgetText = card.querySelector('.budget-amount').textContent.trim().split(' ')[0] + ' ' + card.querySelector('.budget-amount').textContent.trim().split(' ')[1];
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalSubtitle').textContent = 'Vul je offerte in voor dit project';
+    document.getElementById('modalMeta').textContent = meta;
+    document.getElementById('modalBudget').textContent = budgetText;
+    document.getElementById('modalOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function closeModalOutside(e) {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  }
+
+  function submitBid() {
+    closeModal();
+    showToast('✅ Bod succesvol verstuurd! De klant wordt op de hoogte gesteld.');
+  }
+
+  function toggleSave(btn) {
+    btn.classList.toggle('saved');
+    btn.textContent = btn.classList.contains('saved') ? '♥' : '♡';
+    showToast(btn.classList.contains('saved') ? '♥ Klus opgeslagen' : 'Klus verwijderd uit opgeslagen');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  function toggleTag(el) {
+    el.classList.toggle('on');
+    filterCards();
+  }
+
+  function updateBudgetLabel(val) {
+    document.getElementById('budgetLabel').textContent = '€ ' + parseInt(val).toLocaleString('nl-NL');
+  }
+
+  function resetFilters() {
+    document.querySelectorAll('.checkbox-item input').forEach(cb => cb.checked = true);
+    document.getElementById('budgetRange').value = 25000;
+    document.getElementById('budgetLabel').textContent = '€ 25.000';
+    document.querySelectorAll('.tag-chip').forEach(t => t.classList.add('on'));
+    document.querySelector('input[name="deadline"][value="all"]').checked = true;
+    document.querySelector('input[name="bids"][value="all"]').checked = true;
+    document.getElementById('searchInput').value = '';
+    filterCards();
+    showToast('🔄 Alle filters gewist');
+  }
+
+  function filterCards() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const maxBudget = parseInt(document.getElementById('budgetRange').value);
+    const cards = document.querySelectorAll('.klus-card');
+    let visible = 0;
+    cards.forEach(card => {
+      const budget = parseInt(card.dataset.budget);
+      const title = card.querySelector('.card-title').textContent.toLowerCase();
+      const desc = card.querySelector('.card-desc').textContent.toLowerCase();
+      const match = (!q || title.includes(q) || desc.includes(q)) && budget <= maxBudget;
+      card.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    document.getElementById('visibleCount').textContent = visible;
+  }
+
+  function sortCards(val) {
+    showToast('↕ Gesorteerd op: ' + document.querySelector('.sort-select option:checked').textContent);
+  }
+
+  function setView(mode, btn) {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const list = document.getElementById('cardsList');
+    if (mode === 'grid') {
+      list.style.display = 'grid';
+      list.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    } else {
+      list.style.display = 'flex';
+      list.style.flexDirection = 'column';
+    }
+  }
+
+  function removeFilter(el) {
+    el.style.opacity = '0';
+    el.style.transform = 'scale(0.8)';
+    setTimeout(() => el.remove(), 200);
+  }
+
+  // Keyboard close modal
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
