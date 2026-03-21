@@ -463,7 +463,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 /* ═══════════════════════════════════════════════
    ★ NIEUW: KLUS BEVESTIGING OVERLAY
 ═══════════════════════════════════════════════ */
-.bevestiging-overlay{position:fixed;inset:0;z-index:800;background:rgba(7,14,34,.75);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .3s}
+.bevestiging-overlay{position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .3s}
 .bevestiging-overlay.open{opacity:1;pointer-events:all}
 .bevestiging-modal{background:var(--white);border-radius:28px;width:100%;max-width:560px;box-shadow:0 50px 120px rgba(7,14,34,.4);transform:scale(.9);transition:transform .35s cubic-bezier(.34,1.12,.64,1);overflow:hidden}
 .bevestiging-overlay.open .bevestiging-modal{transform:scale(1)}
@@ -2628,6 +2628,7 @@ function showKlusBevestiging(klusId, token, omschrijving) {
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
     overlay.style.display = 'flex';
+    setTimeout(() => overlay.classList.add('open'), 10);
     document.body.style.overflow = 'hidden';
     const beheerBtn = document.getElementById('bev-beheer-btn');
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
@@ -2640,7 +2641,10 @@ function showKlusBevestiging(klusId, token, omschrijving) {
 
 function closeBevestiging() {
   const o = document.getElementById('bevestigingOverlay');
-  if (o) o.style.display = 'none';
+  if (o) {
+    o.classList.remove('open');
+    setTimeout(() => { if (!o.classList.contains('open')) o.style.display = 'none'; }, 300);
+  }
   document.body.style.overflow = '';
 }
 
@@ -2857,7 +2861,7 @@ async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aan
 </script>
 
 <!-- ══ BEVESTIGING OVERLAY ═════════════════════════════ -->
-<div id="bevestigingOverlay" class="bevestiging-overlay" aria-hidden="true" onclick="if(event.target===this)closeBevestiging()" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
+<div id="bevestigingOverlay" class="bevestiging-overlay" aria-hidden="true" onclick="if(event.target===this)closeBevestiging()" style="display:none;">
   <div style="background:#fff;border-radius:28px;width:100%;max-width:580px;overflow:hidden;box-shadow:0 50px 120px rgba(0,0,0,.5);margin:auto;">
 
     <!-- Groene header -->
