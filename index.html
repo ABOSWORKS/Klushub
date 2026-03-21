@@ -463,7 +463,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 /* ═══════════════════════════════════════════════
    ★ NIEUW: KLUS BEVESTIGING OVERLAY
 ═══════════════════════════════════════════════ */
-.bevestiging-overlay{position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .3s}
+.bevestiging-overlay{position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px;transition:opacity .3s}
 .bevestiging-overlay.open{opacity:1;pointer-events:all}
 .bevestiging-modal{background:var(--white);border-radius:28px;width:100%;max-width:560px;box-shadow:0 50px 120px rgba(7,14,34,.4);transform:scale(.9);transition:transform .35s cubic-bezier(.34,1.12,.64,1);overflow:hidden}
 .bevestiging-overlay.open .bevestiging-modal{transform:scale(1)}
@@ -1980,7 +1980,7 @@ async function doHeroSubmit() {
 }
 
 // Legacy alias
-function submitHeroForm() { return doHeroSubmit(); }
+function submitHeroForm() { console.log('submitHeroForm called'); return doHeroSubmit(); }
 
 async function insertKlus(payload, btnId) {
   const btn = document.getElementById(btnId);
@@ -2003,6 +2003,7 @@ async function insertKlus(payload, btnId) {
     try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
     klussen.unshift({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
     localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
+    console.log('Klus successfully inserted, showing confirmation');
     showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
   } else {
     showToast('✅ Klus gepubliceerd!');
@@ -2615,6 +2616,7 @@ let _bevKlusId = null;
 let _bevToken  = null;
 
 function showKlusBevestiging(klusId, token, omschrijving) {
+  console.log('showKlusBevestiging triggered for:', klusId);
   _bevKlusId = klusId;
   _bevToken  = token;
   // Reset knoppen
@@ -2623,17 +2625,20 @@ function showKlusBevestiging(klusId, token, omschrijving) {
     if (b) { b.disabled = false; b.innerHTML = '<span>Klus publiceren</span><span>→</span>'; }
   });
   // Herlaad klussen op achtergrond
-  setTimeout(() => { try { loadKlussen(); } catch(e) {} }, 500);
+  setTimeout(() => { try { loadKlussen(); } catch(e) { console.warn(e); } }, 500);
   // Toon overlay
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
     overlay.style.display = 'flex';
-    setTimeout(() => overlay.classList.add('open'), 10);
+    overlay.style.opacity = '1';
+    overlay.style.pointerEvents = 'all';
+    overlay.classList.add('open');
     document.body.style.overflow = 'hidden';
     const beheerBtn = document.getElementById('bev-beheer-btn');
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
-    if (window.lucide) lucide.createIcons();
+    try { if (window.lucide) lucide.createIcons(); } catch(e) { console.warn('Lucide icons error', e); }
   } else {
+    console.error('bevestigingOverlay NOT FOUND in DOM');
     showToast('✅ Klus gepubliceerd! Check je e-mail voor de beheer-link.');
     setTimeout(() => { showPage('klussen'); switchP('klussen'); }, 1500);
   }
@@ -2643,7 +2648,11 @@ function closeBevestiging() {
   const o = document.getElementById('bevestigingOverlay');
   if (o) {
     o.classList.remove('open');
-    setTimeout(() => { if (!o.classList.contains('open')) o.style.display = 'none'; }, 300);
+    o.style.opacity = '0';
+    o.style.pointerEvents = 'none';
+    setTimeout(() => { 
+      if (!o.classList.contains('open')) o.style.display = 'none'; 
+    }, 300);
   }
   document.body.style.overflow = '';
 }
@@ -2862,7 +2871,7 @@ async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aan
 
 <!-- ══ BEVESTIGING OVERLAY ═════════════════════════════ -->
 <div id="bevestigingOverlay" class="bevestiging-overlay" aria-hidden="true" onclick="if(event.target===this)closeBevestiging()" style="display:none;">
-  <div style="background:#fff;border-radius:28px;width:100%;max-width:580px;overflow:hidden;box-shadow:0 50px 120px rgba(0,0,0,.5);margin:auto;">
+  <div class="bevestiging-modal" style="background:#fff;border-radius:28px;width:100%;max-width:580px;overflow:hidden;box-shadow:0 50px 120px rgba(0,0,0,.5);margin:auto;">
 
     <!-- Groene header -->
     <div style="background:linear-gradient(135deg,#16A34A 0%,#15803d 100%);padding:40px 36px 32px;text-align:center;position:relative;">
