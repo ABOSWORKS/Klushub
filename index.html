@@ -877,7 +877,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
           <div class="form-row" style="margin-top:14px"><label class="form-label">E-mailadres *</label><input class="form-input" id="full-email" type="email" placeholder="jan@email.nl"></div>
           <div class="form-row"><label class="form-label">Telefoonnummer</label><input class="form-input" id="full-telefoon" type="tel" placeholder="06 12345678"></div>
 
-          <button class="submit-btn" id="full-btn" onclick="submitFullForm()"><span>Klus publiceren</span><span>→</span></button>
+          <button type="button" class="submit-btn" id="full-btn" onclick="submitFullForm()"><span>Klus publiceren</span><span>→</span></button>
           <p style="font-size:12px;color:var(--gray-text);text-align:center;margin-top:12px">Direct zichtbaar voor aannemers. Gratis, geen abonnement vereist.</p>
         </div>
       </div>
@@ -1932,19 +1932,33 @@ async function submitHeroForm() {
 }
 
 async function submitFullForm() {
-  const omschrijving = document.getElementById('full-omschrijving').value.trim();
-  const postcode     = document.getElementById('full-postcode').value.trim();
-  const email        = document.getElementById('full-email').value.trim();
-  const fname        = document.getElementById('full-fname').value.trim();
-  const lname        = document.getElementById('full-lname').value.trim();
-  const budgetRaw    = document.getElementById('full-budget').value.replace(/[^0-9]/g,'');
-  const deadline     = document.getElementById('full-deadline').value;
+  // Veilige element checks
+  const omschrEl = document.getElementById('full-omschrijving');
+  const postcodeEl = document.getElementById('full-postcode');
+  const emailEl = document.getElementById('full-email');
+  const fnameEl = document.getElementById('full-fname');
+  const lnameEl = document.getElementById('full-lname');
+  const deadlineEl = document.getElementById('full-deadline');
+  const stadEl = document.getElementById('full-stad');
+  const budgetEl = document.getElementById('full-budget');
+  const telefoonEl = document.getElementById('full-telefoon');
+  const woningtypeEl = document.getElementById('full-woningtype');
+  const uitvoeringEl = document.getElementById('full-uitvoering');
+
+  const omschrijving = omschrEl ? omschrEl.value.trim() : '';
+  const postcode = postcodeEl ? postcodeEl.value.trim() : '';
+  const email = emailEl ? emailEl.value.trim() : '';
+  const fname = fnameEl ? fnameEl.value.trim() : '';
+  const lname = lnameEl ? lnameEl.value.trim() : '';
+  const deadline = deadlineEl ? deadlineEl.value : '';
+  const budgetRaw = budgetEl ? budgetEl.value.replace(/[^0-9]/g,'') : '';
+
   if (!omschrijving||!postcode||!email||!fname||!lname||!deadline) { showToast('⚠️ Vul alle verplichte velden (*) in', true); return; }
   const selectedType = [...document.querySelectorAll('#full-chips .chip.on')].map(c => c.textContent.trim()).join(', ');
-  
+
   const btn = document.getElementById('full-btn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publiceren…';
-  await insertKlus({ type: selectedType||'Overig', omschrijving, postcode, stad: document.getElementById('full-stad').value.trim(), lat: null, lng: null, budget: budgetRaw?parseInt(budgetRaw):null, deadline: deadline||null, email_klant: email, naam_klant: `${fname} ${lname}`, telefoon: document.getElementById('full-telefoon').value.trim(), woningtype: document.getElementById('full-woningtype').value, uitvoering: document.getElementById('full-uitvoering').value.trim(), status: 'open' }, 'full-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publiceren…'; }
+  await insertKlus({ type: selectedType||'Overig', omschrijving, postcode, stad: stadEl ? stadEl.value.trim() : '', lat: null, lng: null, budget: budgetRaw?parseInt(budgetRaw):null, deadline: deadline||null, email_klant: email, naam_klant: `${fname} ${lname}`, telefoon: telefoonEl ? telefoonEl.value.trim() : '', woningtype: woningtypeEl ? woningtypeEl.value : '', uitvoering: uitvoeringEl ? uitvoeringEl.value.trim() : '', status: 'open' }, 'full-btn');
 }
 
 async function insertKlus(payload, btnId) {
@@ -2074,7 +2088,10 @@ function showKlusBevestiging(klusId, token, omschrijving) {
   setTimeout(() => { try { loadKlussen(); } catch(e) {} }, 500);
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
+    // Forceer overlay visibility
     overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
     document.body.style.overflow = 'hidden';
