@@ -2001,10 +2001,17 @@ function showKlusBevestiging(klusId, token, omschrijving) {
     if (b) { b.disabled = false; b.innerHTML = '<span>Klus publiceren</span><span>→</span>'; }
   });
   setTimeout(() => { try { loadKlussen(); } catch(e) {} }, 500);
+
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
+    if (overlay.parentElement !== document.body) document.body.appendChild(overlay);
     overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
+
     const beheerBtn = document.getElementById('bev-beheer-btn');
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
     if (window.lucide) lucide.createIcons();
@@ -2016,7 +2023,12 @@ function showKlusBevestiging(klusId, token, omschrijving) {
 
 function closeBevestiging() {
   const o = document.getElementById('bevestigingOverlay');
-  if (o) o.style.display = 'none';
+  if (o) {
+    o.classList.remove('open');
+    o.setAttribute('aria-hidden', 'true');
+    o.style.opacity = '0';
+    o.style.visibility = 'hidden';
+  }
   document.body.style.overflow = '';
 }
 
