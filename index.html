@@ -1876,6 +1876,10 @@ async function submitFullForm() {
   await insertKlus({ type: selectedType||'Overig', omschrijving, postcode, stad: document.getElementById('full-stad').value.trim(), lat: null, lng: null, budget: budgetRaw?parseInt(budgetRaw):null, deadline: deadline||null, email_klant: email, naam_klant: `${fname} ${lname}`, telefoon: document.getElementById('full-telefoon').value.trim(), woningtype: document.getElementById('full-woningtype').value, uitvoering: document.getElementById('full-uitvoering').value.trim(), status: 'open' }, 'full-btn');
 }
 
+// ⚠️ KRITIEK: Deze functie MOET showKlusBevestiging() aanroepen na succes!
+// ⚠️ Wijzig nooit: demo mode, success case, en fallback case
+// ⚠️ Als je dit verandert, verdwijnt de groene bevestigingsmodal!
+// ⚠️ Test ALTIJD: 1) Vul formulier, 2) Klik "Publiceren", 3) Controleer modal verschijnt
 async function insertKlus(payload, btnId) {
   const btn = document.getElementById(btnId);
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publiceren…';
@@ -1990,6 +1994,11 @@ async function loadMijnKlussen() {
 let _bevKlusId = null;
 let _bevToken  = null;
 
+// ⚠️ KRITIEK: Deze functie toont de GROENE BEVESTIGINGSMODAL
+// ⚠️ MOET aangeroepen worden door insertKlus() na succesvolle job plaatsing
+// ⚠️ HTML element moet class="bevestiging-overlay" hebben (zie regel ~3400)
+// ⚠️ CSS regel .bevestiging-overlay.open moet opacity:1 hebben
+// ⚠️ Wijzig NOOIT: overlay.classList.add('open'), inline styles, aria-hidden
 function showKlusBevestiging(klusId, token, omschrijving) {
   _bevKlusId = klusId;
   _bevToken  = token;
