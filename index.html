@@ -1852,7 +1852,7 @@ async function submitHeroForm() {
   const email        = document.getElementById('hf-email').value.trim();
   const budgetRaw    = document.getElementById('hf-budget').value.replace(/[^0-9]/g,'');
   if (!omschrijving || !postcode || !email) { showToast('⚠️ Vul omschrijving, postcode en e-mail in', true); return; }
-  if (!email.includes('@')) { showToast('⚠️ Vul een geldig e-mailadres in', true); return; }
+  if (!email.includes('@')) { showToast('⚠️ E-mailadres is niet geldig (moet een @ bevatten)', true); return; }
   const selectedType = [...document.querySelectorAll('.hf-chip.on')].map(c => c.textContent.trim()).join(', ');
   
   const btn = document.getElementById('hf-btn');
@@ -1869,6 +1869,7 @@ async function submitFullForm() {
   const budgetRaw    = document.getElementById('full-budget').value.replace(/[^0-9]/g,'');
   const deadline     = document.getElementById('full-deadline').value;
   if (!omschrijving||!postcode||!email||!fname||!lname||!deadline) { showToast('⚠️ Vul alle verplichte velden (*) in', true); return; }
+  if (!email.includes('@')) { showToast('⚠️ E-mailadres is niet geldig (moet een @ bevatten)', true); return; }
   const selectedType = [...document.querySelectorAll('#full-chips .chip.on')].map(c => c.textContent.trim()).join(', ');
   
   const btn = document.getElementById('full-btn');
@@ -1903,7 +1904,7 @@ async function insertKlus(payload, btnId) {
     localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
     showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
   } else {
-    showToast('✅ Klus gepubliceerd!');
+    showToast('🎉 Klus gepubliceerd!');
     setTimeout(() => { showPage('klussen'); switchP('klussen'); loadKlussen(); }, 1400);
   }
 }
@@ -2022,7 +2023,7 @@ function showKlusBevestiging(klusId, token, omschrijving) {
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
     if (window.lucide) lucide.createIcons();
   } else {
-    showToast('✅ Klus gepubliceerd! Check je e-mail voor de beheer-link.');
+    showToast('🎉 Klus gepubliceerd! Check je e-mail voor de beheer-link.');
     setTimeout(() => { showPage('klussen'); switchP('klussen'); }, 1500);
   }
 }
@@ -2061,7 +2062,8 @@ async function doHeroSubmit() {
   const email        = (document.getElementById('hf-email').value || '').trim();
   const budgetRaw    = (document.getElementById('hf-budget').value || '').replace(/[^0-9]/g,'');
   if (!omschrijving) { showToast('⚠️ Vul een omschrijving in', true); return; }
-  if (!email || !email.includes('@')) { showToast('⚠️ Vul een geldig e-mailadres in', true); return; }
+  if (!email) { showToast('⚠️ Vul een e-mailadres in', true); return; }
+  if (!email.includes('@')) { showToast('⚠️ E-mailadres is niet geldig (moet een @ bevatten)', true); return; }
   const selectedType = [...document.querySelectorAll('#hf-chips-wrap .hf-chip.on')]
     .map(c => (c.textContent||'').trim()).filter(Boolean).join(', ') || 'Overig';
   const btn = document.getElementById('hf-btn');
@@ -2157,7 +2159,7 @@ function showReviewSuccess() {
 
 async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aannemerId) {
   if (!confirm(`Wil je ${aannemerNaam} definitief kiezen?\n\nDe aannemer ontvangt jouw contactgegevens. Andere aanbiedingen worden afgewezen.`)) return;
-  if (!sb) { showToast('✅ ' + aannemerNaam + ' gekozen! (demo)'); return; }
+  if (!sb) { showToast('🎉 ' + aannemerNaam + ' gekozen! (demo)'); return; }
   const { error } = await sb.rpc('beheer_update_aanbieding', { p_klus_id: klusId, p_token: token, p_aanbieding_id: aanbiedingId, p_status: 'geaccepteerd' });
   if (error) { showToast('❌ Fout: ' + error.message, true); return; }
   await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gekozen' });
@@ -2320,20 +2322,20 @@ async function beheerSluitKlus(klusId, token) {
   if (!confirm('Weet je zeker dat je deze klus wilt sluiten voor nieuwe aanbiedingen?')) return;
   const { data, error } = await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gesloten' });
   if (error) showToast('Fout bij sluiten klus', true);
-  else { showToast('✅ Klus succesvol gesloten!'); openKlantBeheer(klusId, token); }
+  else { showToast('🎉 Klus succesvol gesloten!'); openKlantBeheer(klusId, token); }
 }
 
 async function beheerOpenKlus(klusId, token) {
   const { data, error } = await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'open' });
   if (error) showToast('Fout bij verversen klus', true);
-  else { showToast('✅ Klus staat weer open!'); openKlantBeheer(klusId, token); }
+  else { showToast('🎉 Klus staat weer open!'); openKlantBeheer(klusId, token); }
 }
 
 async function beheerAccepteerBod(klusId, token, aanbiedingId, status) {
   if (status === 'geaccepteerd' && !confirm('Weet je zeker dat je dit bod definitief wilt accepteren? Andere aannemers worden hierna mogelijk afgewezen.')) return;
   const { data, error } = await sb.rpc('beheer_update_aanbieding', { p_klus_id: klusId, p_token: token, p_aanbieding_id: aanbiedingId, p_status: status });
   if (error) showToast('Fout bij updaten bod', true);
-  else { showToast('✅ Status bod bijgewerkt!'); openKlantBeheer(klusId, token); }
+  else { showToast('🎉 Status bod bijgewerkt!'); openKlantBeheer(klusId, token); }
 }
 
 // ── Edit klus ──────────────────────────────────
@@ -2403,7 +2405,7 @@ async function saveEditKlus() {
 
   if (error) { showToast('❌ Opslaan mislukt: ' + error.message, true); }
   else {
-    showToast('✅ Klus bijgewerkt' + (nieuweStatus==='open' ? ' en weer actief!' : '!'));
+    showToast('🎉 Klus bijgewerkt' + (nieuweStatus==='open' ? ' en weer actief!' : '!'));
     closeEditKlus();
     await loadMijnKlussen();
     await loadKlussen();
@@ -2474,7 +2476,7 @@ async function saveEditProfile() {
   if (error) { 
     showToast('❌ Opslaan mislukt: ' + error.message, true); 
   } else {
-    showToast('✅ Profiel succesvol bijgewerkt!');
+    showToast('🎉 Profiel succesvol bijgewerkt!');
     closeEditProfile();
     currentUser = { ...currentUser, ...payload, id: newId };
     updateNavAuth();
@@ -2508,12 +2510,12 @@ async function submitAanbieding() {
   if (!sb || !currentKlusId || currentKlusId.startsWith('demo')) {
     await new Promise(r => setTimeout(r, 700));
     btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
-    closeModal(); showToast('✅ Aanbieding verstuurd! (demo modus)'); return;
+    closeModal(); showToast('🎉 Aanbieding verstuurd! (demo modus)'); return;
   }
   const { error } = await sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht });
   btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
   if (error) showToast('❌ Versturen mislukt: ' + error.message, true);
-  else { closeModal(); showToast('✅ Aanbieding verstuurd!'); }
+  else { closeModal(); showToast('🎉 Aanbieding verstuurd!'); }
 }
 
 // ══════════════════════════════════════════════════
@@ -3145,7 +3147,7 @@ async function saveEditProfile() {
   if (error) {
     showToast('❌ Opslaan mislukt: ' + error.message, true);
   } else {
-    showToast('✅ Profiel succesvol bijgewerkt!');
+    showToast('🎉 Profiel succesvol bijgewerkt!');
     closeEditProfile();
     currentUser = { ...currentUser, ...payload, id: newId };
     updateNavAuth();
