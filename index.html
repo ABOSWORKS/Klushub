@@ -1851,8 +1851,16 @@ async function submitHeroForm() {
   const postcode     = document.getElementById('hf-postcode').value.trim();
   const email        = document.getElementById('hf-email').value.trim();
   const budgetRaw    = document.getElementById('hf-budget').value.replace(/[^0-9]/g,'');
-  if (!omschrijving || !postcode || !email) { showToast('⚠️ Vul omschrijving, postcode en e-mail in', true); return; }
-  if (!email.includes('@')) { showToast('⚠️ E-mailadres is niet geldig (moet een @ bevatten)', true); return; }
+
+  const errors = [];
+  if (!omschrijving) errors.push('Omschrijving');
+  if (postcode && !/^\d{4}\s?[A-Za-z]{2}$/.test(postcode)) errors.push('Postcode (ongeldig formaat, bijv. 1234 AB)');
+  if (!email) errors.push('E-mailadres');
+  else if (!email.includes('@')) errors.push('E-mailadres (geen @ gevonden)');
+  else if (!email.includes('.')) errors.push('E-mailadres (geen punt gevonden)');
+
+  if (errors.length > 1) { showToast('⚠️ Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
+  if (errors.length === 1) { showToast('⚠️ ' + errors[0] + ' is niet correct ingevuld', true); return; }
   const selectedType = [...document.querySelectorAll('.hf-chip.on')].map(c => c.textContent.trim()).join(', ');
   
   const btn = document.getElementById('hf-btn');
@@ -1868,8 +1876,20 @@ async function submitFullForm() {
   const lname        = document.getElementById('full-lname').value.trim();
   const budgetRaw    = document.getElementById('full-budget').value.replace(/[^0-9]/g,'');
   const deadline     = document.getElementById('full-deadline').value;
-  if (!omschrijving||!postcode||!email||!fname||!lname||!deadline) { showToast('⚠️ Vul alle verplichte velden (*) in', true); return; }
-  if (!email.includes('@')) { showToast('⚠️ E-mailadres is niet geldig (moet een @ bevatten)', true); return; }
+
+  const errors = [];
+  if (!omschrijving) errors.push('Omschrijving');
+  if (!fname) errors.push('Voornaam');
+  if (!lname) errors.push('Achternaam');
+  if (!postcode) errors.push('Postcode');
+  else if (!/^\d{4}\s?[A-Za-z]{2}$/.test(postcode)) errors.push('Postcode (ongeldig formaat, bijv. 1234 AB)');
+  if (!email) errors.push('E-mailadres');
+  else if (!email.includes('@')) errors.push('E-mailadres (geen @ gevonden)');
+  else if (!email.includes('.')) errors.push('E-mailadres (geen punt gevonden)');
+  if (!deadline) errors.push('Deadline aanbiedingen');
+
+  if (errors.length > 1) { showToast('⚠️ Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
+  if (errors.length === 1) { showToast('⚠️ ' + errors[0] + ' is niet correct ingevuld', true); return; }
   const selectedType = [...document.querySelectorAll('#full-chips .chip.on')].map(c => c.textContent.trim()).join(', ');
   
   const btn = document.getElementById('full-btn');
@@ -2061,9 +2081,16 @@ async function doHeroSubmit() {
   const postcode     = (document.getElementById('hf-postcode').value || '').trim();
   const email        = (document.getElementById('hf-email').value || '').trim();
   const budgetRaw    = (document.getElementById('hf-budget').value || '').replace(/[^0-9]/g,'');
-  if (!omschrijving) { showToast('⚠️ Vul een omschrijving in', true); return; }
-  if (!email) { showToast('⚠️ Vul een e-mailadres in', true); return; }
-  if (!email.includes('@')) { showToast('⚠️ E-mailadres is niet geldig (moet een @ bevatten)', true); return; }
+
+  const errors = [];
+  if (!omschrijving) errors.push('Omschrijving');
+  if (postcode && !/^\d{4}\s?[A-Za-z]{2}$/.test(postcode)) errors.push('Postcode (ongeldig formaat, bijv. 1234 AB)');
+  if (!email) errors.push('E-mailadres');
+  else if (!email.includes('@')) errors.push('E-mailadres (geen @ gevonden)');
+  else if (!email.includes('.')) errors.push('E-mailadres (geen punt gevonden)');
+
+  if (errors.length > 1) { showToast('⚠️ Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
+  if (errors.length === 1) { showToast('⚠️ ' + errors[0] + ' is niet correct ingevuld', true); return; }
   const selectedType = [...document.querySelectorAll('#hf-chips-wrap .hf-chip.on')]
     .map(c => (c.textContent||'').trim()).filter(Boolean).join(', ') || 'Overig';
   const btn = document.getElementById('hf-btn');
