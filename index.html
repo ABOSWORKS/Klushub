@@ -736,8 +736,10 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 <section class="revs" id="reviews">
   <div class="sl">Ervaringen</div><div class="st">Wat klanten zeggen</div>
   <p class="ss" style="margin-bottom:44px">Echte reviews, onbewerkt en transparant.</p>
-  <div class="rev-grid" id="reviewsContainer">
-    <!-- Dynamisch ingevuld via JavaScript -->
+  <div class="rev-grid">
+    <div class="rev-card reveal"><div class="rev-stars"><span class="rev-str">★</span><span class="rev-str">★</span><span class="rev-str">★</span><span class="rev-str">★</span><span class="rev-str">★</span></div><p class="rev-text">"Via Klushub kregen we binnen 2 dagen vijf aanbiedingen voor onze badkamer. Uiteindelijk 30% minder betaald. Aanrader!"</p><div class="rev-auth"><div class="rev-av">SV</div><div><div class="rev-name">Sandra V.</div><div class="rev-meta">Badkamer renovatie · Amsterdam</div></div></div></div>
+    <div class="rev-card reveal"><div class="rev-stars"><span class="rev-str">★</span><span class="rev-str">★</span><span class="rev-str">★</span><span class="rev-str">★</span><span class="rev-str">★</span></div><p class="rev-text">"De aannemer die ik via Klushub vond had 48 vijfsterren-reviews. Keurig werk en op tijd klaar."</p><div class="rev-auth"><div class="rev-av" style="background:linear-gradient(135deg,#1a6b3a,#2daa6a)">MK</div><div><div class="rev-name">Mark K.</div><div class="rev-meta">Zolder verbouwing · Utrecht</div></div></div></div>
+    <div class="rev-card reveal"><div class="rev-stars"><span class="rev-str">★</span><span class="rev-str">★</span><span class="rev-str">★</span><span class="rev-str">★</span><span class="rev-str" style="opacity:.4">★</span></div><p class="rev-text">"Als aannemer ben ik dankzij Klushub van 2 naar 6 projecten per maand gegaan."</p><div class="rev-auth"><div class="rev-av" style="background:linear-gradient(135deg,#8B3A1A,#D4622A)">RB</div><div><div class="rev-name">Remco B.</div><div class="rev-meta">Aannemer · Rotterdam</div></div></div></div>
   </div>
 </section>
 
@@ -877,7 +879,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
           <div class="form-row" style="margin-top:14px"><label class="form-label">E-mailadres *</label><input class="form-input" id="full-email" type="email" placeholder="jan@email.nl"></div>
           <div class="form-row"><label class="form-label">Telefoonnummer</label><input class="form-input" id="full-telefoon" type="tel" placeholder="06 12345678"></div>
 
-          <button type="button" class="submit-btn" id="full-btn" onclick="submitFullForm()"><span>Klus publiceren</span><span>→</span></button>
+          <button class="submit-btn" id="full-btn" onclick="submitFullForm()"><span>Klus publiceren</span><span>→</span></button>
           <p style="font-size:12px;color:var(--gray-text);text-align:center;margin-top:12px">Direct zichtbaar voor aannemers. Gratis, geen abonnement vereist.</p>
         </div>
       </div>
@@ -1785,79 +1787,6 @@ function buildKlusCard(k) {
 
 // Typo verlooptBinnen3 is inmiddels opgelost in de rendering
 
-function renderReviews() {
-  const container = document.getElementById('reviewsContainer');
-  if (!container) return;
-
-  // Verzamel alle reviews uit alle aannemers (mock data)
-  let allReviews = [];
-  if (window.allAannemers) {
-    window.allAannemers.forEach(aannemer => {
-      if (aannemer.reviews && Array.isArray(aannemer.reviews)) {
-        aannemer.reviews.forEach(rev => {
-          allReviews.push({
-            ...rev,
-            aannemer_voornaam: aannemer.voornaam,
-            aannemer_achternaam: aannemer.achternaam,
-            aannemer_bedrijfsnaam: aannemer.bedrijfsnaam,
-            aannemer_stad: aannemer.stad,
-          });
-        });
-      }
-    });
-  }
-
-  // Fall back naar hardcoded reviews als geen reviews beschikbaar
-  if (allReviews.length === 0) {
-    allReviews = [
-      {
-        score_kwaliteit: 5, score_communicatie: 5, score_prijs_kwaliteit: 5, score_tijdigheid: 5, score_netheid: 5,
-        tekst: '"Via Klushub kregen we binnen 2 dagen vijf aanbiedingen voor onze badkamer. Uiteindelijk 30% minder betaald. Aanrader!"',
-        aannemer_voornaam: 'Sandra', aannemer_achternaam: 'V.', aannemer_stad: 'Amsterdam',
-        kategorie: 'Badkamer renovatie'
-      },
-      {
-        score_kwaliteit: 5, score_communicatie: 5, score_prijs_kwaliteit: 5, score_tijdigheid: 5, score_netheid: 5,
-        tekst: '"De aannemer die ik via Klushub vond had 48 vijfsterren-reviews. Keurig werk en op tijd klaar."',
-        aannemer_voornaam: 'Mark', aannemer_achternaam: 'K.', aannemer_stad: 'Utrecht',
-        kategorie: 'Zolder verbouwing'
-      },
-      {
-        score_kwaliteit: 5, score_communicatie: 5, score_prijs_kwaliteit: 5, score_tijdigheid: 5, score_netheid: 4,
-        tekst: '"Als aannemer ben ik dankzij Klushub van 2 naar 6 projecten per maand gegaan."',
-        aannemer_voornaam: 'Remco', aannemer_achternaam: 'B.', aannemer_stad: 'Rotterdam',
-        kategorie: 'Aannemer'
-      }
-    ];
-  }
-
-  // Toon maximaal 6 reviews (shuffle)
-  allReviews = allReviews.sort(() => Math.random() - 0.5).slice(0, 6);
-
-  container.innerHTML = allReviews.map(rev => {
-    const avgScore = Math.round(((rev.score_kwaliteit || 0) + (rev.score_communicatie || 0) + (rev.score_prijs_kwaliteit || 0) + (rev.score_tijdigheid || 0) + (rev.score_netheid || 0)) / 5 * 10) / 10;
-    const stars = Math.round(avgScore);
-    const name = rev.aannemer_voornaam ? rev.aannemer_voornaam.charAt(0) + rev.aannemer_achternaam.charAt(0) : 'XX';
-    const initials = name.substring(0, 2).toUpperCase();
-    const fullName = `${rev.aannemer_voornaam || ''} ${rev.aannemer_achternaam || ''}`.trim();
-    const meta = rev.aannemer_stad ? `${rev.kategorie || 'Klus'} · ${rev.aannemer_stad}` : rev.kategorie || 'Klushub';
-
-    return `<div class="rev-card reveal">
-      <div class="rev-stars">${'<span class="rev-str">★</span>'.repeat(stars)}${stars < 5 ? '<span class="rev-str" style="opacity:.4">★</span>'.repeat(5 - stars) : ''}</div>
-      <p class="rev-text">${escHtml(rev.tekst || '')}</p>
-      <div class="rev-auth">
-        <div class="rev-av">${initials}</div>
-        <div>
-          <div class="rev-name">${escHtml(fullName || 'Klushub gebruiker')}</div>
-          <div class="rev-meta">${escHtml(meta)}</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-
-  if (window.lucide) lucide.createIcons();
-}
-
 function renderDemoKlussen() {
   const demo = [
     {id:'demo-1',type:'Badkamer',omschrijving:'Volledige badkamer renovatie — ca. 8 m², inclusief nieuwe inloopdouche en vloerverwarming.',stad:'Amsterdam',postcode:'1091AA',budget:8500,deadline:new Date(Date.now()+10*86400000).toISOString().split('T')[0],naam_klant:'Sandra V.',aangemaakt:new Date(Date.now()-2*3600000).toISOString(),woningtype:'Tussenwoning',lat:52.3676,lng:4.9041},
@@ -1932,63 +1861,50 @@ async function submitHeroForm() {
 }
 
 async function submitFullForm() {
-  // Veilige element checks
-  const omschrEl = document.getElementById('full-omschrijving');
-  const postcodeEl = document.getElementById('full-postcode');
-  const emailEl = document.getElementById('full-email');
-  const fnameEl = document.getElementById('full-fname');
-  const lnameEl = document.getElementById('full-lname');
-  const deadlineEl = document.getElementById('full-deadline');
-  const stadEl = document.getElementById('full-stad');
-  const budgetEl = document.getElementById('full-budget');
-  const telefoonEl = document.getElementById('full-telefoon');
-  const woningtypeEl = document.getElementById('full-woningtype');
-  const uitvoeringEl = document.getElementById('full-uitvoering');
-
-  const omschrijving = omschrEl ? omschrEl.value.trim() : '';
-  const postcode = postcodeEl ? postcodeEl.value.trim() : '';
-  const email = emailEl ? emailEl.value.trim() : '';
-  const fname = fnameEl ? fnameEl.value.trim() : '';
-  const lname = lnameEl ? lnameEl.value.trim() : '';
-  const deadline = deadlineEl ? deadlineEl.value : '';
-  const budgetRaw = budgetEl ? budgetEl.value.replace(/[^0-9]/g,'') : '';
-
+  const omschrijving = document.getElementById('full-omschrijving').value.trim();
+  const postcode     = document.getElementById('full-postcode').value.trim();
+  const email        = document.getElementById('full-email').value.trim();
+  const fname        = document.getElementById('full-fname').value.trim();
+  const lname        = document.getElementById('full-lname').value.trim();
+  const budgetRaw    = document.getElementById('full-budget').value.replace(/[^0-9]/g,'');
+  const deadline     = document.getElementById('full-deadline').value;
   if (!omschrijving||!postcode||!email||!fname||!lname||!deadline) { showToast('⚠️ Vul alle verplichte velden (*) in', true); return; }
   const selectedType = [...document.querySelectorAll('#full-chips .chip.on')].map(c => c.textContent.trim()).join(', ');
-
+  
   const btn = document.getElementById('full-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publiceren…'; }
-  await insertKlus({ type: selectedType||'Overig', omschrijving, postcode, stad: stadEl ? stadEl.value.trim() : '', lat: null, lng: null, budget: budgetRaw?parseInt(budgetRaw):null, deadline: deadline||null, email_klant: email, naam_klant: `${fname} ${lname}`, telefoon: telefoonEl ? telefoonEl.value.trim() : '', woningtype: woningtypeEl ? woningtypeEl.value : '', uitvoering: uitvoeringEl ? uitvoeringEl.value.trim() : '', status: 'open' }, 'full-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publiceren…';
+  await insertKlus({ type: selectedType||'Overig', omschrijving, postcode, stad: document.getElementById('full-stad').value.trim(), lat: null, lng: null, budget: budgetRaw?parseInt(budgetRaw):null, deadline: deadline||null, email_klant: email, naam_klant: `${fname} ${lname}`, telefoon: document.getElementById('full-telefoon').value.trim(), woningtype: document.getElementById('full-woningtype').value, uitvoering: document.getElementById('full-uitvoering').value.trim(), status: 'open' }, 'full-btn');
 }
 
+// ⚠️ KRITIEK: Deze functie MOET showKlusBevestiging() aanroepen na succes!
+// ⚠️ Wijzig nooit: demo mode, success case, en fallback case
+// ⚠️ Als je dit verandert, verdwijnt de groene bevestigingsmodal!
+// ⚠️ Test ALTIJD: 1) Vul formulier, 2) Klik "Publiceren", 3) Controleer modal verschijnt
 async function insertKlus(payload, btnId) {
   const btn = document.getElementById(btnId);
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publiceren…';
   if (!sb) {
     await new Promise(r => setTimeout(r, 900));
     btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>';
-    showToast('✅ Klus gepubliceerd! (demo — koppel Supabase om echt op te slaan)');
-    setTimeout(() => { showPage('klussen'); switchP('klussen'); }, 1400); return;
+    showKlusBevestiging('demo-123', 'demo-token', payload.omschrijving);
+    return;
   }
+  // FIX: genereer beheer_token client-side zodat we niet op DB-response hoeven te wachten
   const beheerToken = crypto.randomUUID();
   payload.beheer_token = beheerToken;
   const { data, error } = await sb.from('klussen').insert(payload).select('id').single();
   btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>';
   if (error) { showToast('❌ Opslaan mislukt: ' + error.message, true); }
-  else { 
-    // Sla beheer token op in de browser voor apparaat-herkenning
-    if (data && data.id && beheerToken) {
-      let klussen = [];
-      try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
-      klussen.unshift({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
-      localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
-      
-      showToast('✅ Klus gepubliceerd!');
-      setTimeout(() => openKlantBeheer(data.id, beheerToken), 1000);
-    } else {
-      showToast('✅ Klus gepubliceerd!'); 
-      setTimeout(() => { showPage('klussen'); switchP('klussen'); loadKlussen(); }, 1400); 
-    }
+  else if (data && data.id) {
+    // Sla op in localStorage voor apparaat-herkenning
+    let klussen = [];
+    try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
+    klussen.unshift({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
+    localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
+    showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
+  } else {
+    showToast('✅ Klus gepubliceerd!');
+    setTimeout(() => { showPage('klussen'); switchP('klussen'); loadKlussen(); }, 1400);
   }
 }
 
@@ -2078,21 +1994,30 @@ async function loadMijnKlussen() {
 let _bevKlusId = null;
 let _bevToken  = null;
 
+// ⚠️ KRITIEK: Deze functie toont de GROENE BEVESTIGINGSMODAL
+// ⚠️ MOET aangeroepen worden door insertKlus() na succesvolle job plaatsing
+// ⚠️ HTML element moet class="bevestiging-overlay" hebben (zie regel ~3400)
+// ⚠️ CSS regel .bevestiging-overlay.open moet opacity:1 hebben
+// ⚠️ Wijzig NOOIT: overlay.classList.add('open'), inline styles, aria-hidden
 function showKlusBevestiging(klusId, token, omschrijving) {
   _bevKlusId = klusId;
   _bevToken  = token;
-  // Reset knoppen
   ['hf-btn','full-btn'].forEach(id => {
     const b = document.getElementById(id);
     if (b) { b.disabled = false; b.innerHTML = '<span>Klus publiceren</span><span>→</span>'; }
   });
-  // Herlaad klussen op achtergrond
   setTimeout(() => { try { loadKlussen(); } catch(e) {} }, 500);
-  // Toon overlay
+
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
+    if (overlay.parentElement !== document.body) document.body.appendChild(overlay);
     overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
+
     const beheerBtn = document.getElementById('bev-beheer-btn');
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
     if (window.lucide) lucide.createIcons();
@@ -2104,7 +2029,12 @@ function showKlusBevestiging(klusId, token, omschrijving) {
 
 function closeBevestiging() {
   const o = document.getElementById('bevestigingOverlay');
-  if (o) o.style.display = 'none';
+  if (o) {
+    o.classList.remove('open');
+    o.setAttribute('aria-hidden', 'true');
+    o.style.opacity = '0';
+    o.style.visibility = 'hidden';
+  }
   document.body.style.overflow = '';
 }
 
@@ -3331,8 +3261,8 @@ function updateNavFoto() {
     </div>
 
 
-    <!-- AANNEMER STAPPENPLAN (DUPLICATE - REMOVED) -->
-    <div id="faq-aannemer-stappenplan-duplicate" style="display:none;" class="faq-section">
+    <!-- AANNEMER STAPPENPLAN -->
+    <div id="faq-aannemer-stappenplan" class="faq-section">
       <div style="background:linear-gradient(135deg,#1A3A7A,#2E5FBE);border-radius:20px;padding:36px;margin-bottom:40px;position:relative;overflow:hidden;">
         <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 85% 50%,rgba(245,194,0,.12) 0%,transparent 70%);pointer-events:none;"></div>
         <div style="position:relative;z-index:1;">
@@ -3470,52 +3400,35 @@ function updateNavFoto() {
   </div>
 </div>
 
-<!-- ══ BEVESTIGING OVERLAY ═════════════════════════════ -->
-<div id="bevestigingOverlay" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
+<!-- ══ BEVESTIGING OVERLAY — buiten alle pagina divs ══════════ -->
+<div id="bevestigingOverlay" class="bevestiging-overlay" aria-hidden="true" onclick="if(event.target===this)closeBevestiging()" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
   <div style="background:#fff;border-radius:28px;width:100%;max-width:580px;overflow:hidden;box-shadow:0 50px 120px rgba(0,0,0,.5);margin:auto;">
-
-    <!-- Groene header -->
-    <div style="background:linear-gradient(135deg,#16A34A 0%,#15803d 100%);padding:40px 36px 32px;text-align:center;position:relative;">
-      <div style="width:80px;height:80px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:38px;border:3px solid rgba(255,255,255,.4);">✓</div>
+    <div style="background:linear-gradient(135deg,#16A34A 0%,#15803d 100%);padding:40px 36px 32px;text-align:center;">
+      <div style="width:80px;height:80px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;border:3px solid rgba(255,255,255,.4);"><i data-lucide="check" style="width:40px;height:40px;stroke:white;stroke-width:3;fill:none;margin:0;"></i></div>
       <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:100px;padding:5px 14px;font-size:12px;font-weight:700;color:#fff;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;">Klus gepubliceerd</div>
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1;">Gefeliciteerd! 🎉</h2>
       <p style="font-size:15px;color:rgba(255,255,255,.88);line-height:1.6;max-width:420px;margin:0 auto;">Jouw klus staat nu tussen de <a onclick="closeBevestiging();showPage('klussen');switchP('klussen');" style="color:#FFD740;font-weight:800;cursor:pointer;text-decoration:underline;">Openstaande Klussen</a> en is zichtbaar voor aannemers in jouw regio.</p>
     </div>
-
-    <!-- Body -->
     <div style="padding:30px 36px 36px;">
-
-      <!-- Email info -->
       <div style="background:#F4F6FB;border:1px solid #E4E9F2;border-radius:16px;padding:20px;margin-bottom:14px;display:flex;gap:16px;align-items:flex-start;">
-        <div style="width:44px;height:44px;background:linear-gradient(135deg,#1A3A7A,#2E5FBE);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📧</div>
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,#1A3A7A,#2E5FBE);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="mail" style="width:22px;height:22px;stroke:white;stroke-width:2;fill:none;margin:0;"></i></div>
         <div>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:#0B1F4A;margin-bottom:5px;">Je kunt je klus beheren via je e-mail</div>
           <div style="font-size:13px;color:#5A6480;line-height:1.6;">Je ontvangt een e-mail met een persoonlijke beheer-link. Via die link zie je alle binnengekomen aanbiedingen, kun je informatie delen met aannemers en kies je uiteindelijk de beste vakman.</div>
         </div>
       </div>
-
-      <!-- Spam waarschuwing -->
       <div style="background:#FFF8D6;border:1px solid rgba(245,194,0,.4);border-radius:12px;padding:14px 16px;margin-bottom:24px;display:flex;align-items:flex-start;gap:10px;">
-        <span style="font-size:20px;flex-shrink:0;margin-top:1px;">📁</span>
+        <i data-lucide="folder-open" style="width:22px;height:22px;flex-shrink:0;margin-top:1px;stroke:#7A5E00;stroke-width:2;fill:none;margin:0 0 0 0;"></i>
         <div style="font-size:13px;color:#7A5E00;line-height:1.55;font-weight:600;">Geen e-mail ontvangen? Vergeet niet om in je <strong>spam / ongewenste e-mail</strong> folder te kijken. E-mails van Klushub belanden hier soms automatisch.</div>
       </div>
-
-      <!-- Knoppen -->
       <div style="display:flex;flex-direction:column;gap:10px;">
-        <button onclick="closeBevestiging();showPage('klussen');switchP('klussen');" style="width:100%;padding:15px;background:#0B1F4A;color:#fff;border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-          <span>Bekijk openstaande klussen</span><span>→</span>
-        </button>
-        <button id="bev-beheer-btn" onclick="closeBevestiging();openKlantBeheerFromBev();" style="width:100%;padding:13px;background:transparent;color:#0B1F4A;border:1.5px solid #E4E9F2;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;">
-          Beheer mijn klus direct →
-        </button>
+        <button onclick="closeBevestiging();showPage('klussen');switchP('klussen');" style="width:100%;padding:15px;background:#0B1F4A;color:#fff;border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:19px;cursor:pointer;">Bekijk openstaande klussen →</button>
+        <button id="bev-beheer-btn" onclick="closeBevestiging();openKlantBeheerFromBev();" style="width:100%;padding:13px;background:transparent;color:#0B1F4A;border:1.5px solid #E4E9F2;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;">Beheer mijn klus direct →</button>
       </div>
-
-      <!-- Stappenplan link -->
       <div style="text-align:center;margin-top:18px;padding-top:18px;border-top:1px solid #E4E9F2;">
         <span style="font-size:13px;color:#5A6480;">Wat gebeurt er nu? </span>
-        <a onclick="closeBevestiging();showPage('faq');openFaqSection('stappenplan',document.querySelector('.faq-tab'));" style="font-size:13px;color:#2E5FBE;font-weight:700;cursor:pointer;text-decoration:none;">Bekijk het stappenplan voor het beheren van klussen →</a>
+        <a onclick="closeBevestiging();showPage('faq');setTimeout(()=>openFaqSection('stappenplan',document.querySelector('.faq-tab')),100);" style="font-size:13px;color:#2E5FBE;font-weight:700;cursor:pointer;">Bekijk het stappenplan voor het beheren van klussen →</a>
       </div>
-
     </div>
   </div>
 </div>
@@ -3685,15 +3598,6 @@ function updateNavFoto() {
     </div>
   </div>
 </div>
-
-<script>
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    renderReviews();
-    if (window.lucide) lucide.createIcons();
-  }, 100);
-});
-</script>
 
 </body>
 </html>
