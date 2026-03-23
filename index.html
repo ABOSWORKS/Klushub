@@ -2081,19 +2081,17 @@ let _bevToken  = null;
 function showKlusBevestiging(klusId, token, omschrijving) {
   _bevKlusId = klusId;
   _bevToken  = token;
+  // Reset knoppen
   ['hf-btn','full-btn'].forEach(id => {
     const b = document.getElementById(id);
     if (b) { b.disabled = false; b.innerHTML = '<span>Klus publiceren</span><span>→</span>'; }
   });
+  // Herlaad klussen op achtergrond
   setTimeout(() => { try { loadKlussen(); } catch(e) {} }, 500);
+  // Toon overlay
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
-    // Forceer overlay visibility
     overlay.style.display = 'flex';
-    overlay.style.visibility = 'visible';
-    overlay.style.opacity = '1';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
     document.body.style.overflow = 'hidden';
     const beheerBtn = document.getElementById('bev-beheer-btn');
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
@@ -3472,35 +3470,52 @@ function updateNavFoto() {
   </div>
 </div>
 
-<!-- ══ BEVESTIGING OVERLAY — buiten alle pagina divs ══════════ -->
-<div id="bevestigingOverlay" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);align-items:center;justify-content:center;padding:20px;overflow-y:auto;flex-direction:column;" class="bevestiging-flex">
+<!-- ══ BEVESTIGING OVERLAY ═════════════════════════════ -->
+<div id="bevestigingOverlay" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
   <div style="background:#fff;border-radius:28px;width:100%;max-width:580px;overflow:hidden;box-shadow:0 50px 120px rgba(0,0,0,.5);margin:auto;">
-    <div style="background:linear-gradient(135deg,#16A34A 0%,#15803d 100%);padding:40px 36px 32px;text-align:center;">
-      <div style="width:80px;height:80px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;border:3px solid rgba(255,255,255,.4);"><i data-lucide="check" style="width:40px;height:40px;stroke:white;stroke-width:3;fill:none;margin:0;"></i></div>
+
+    <!-- Groene header -->
+    <div style="background:linear-gradient(135deg,#16A34A 0%,#15803d 100%);padding:40px 36px 32px;text-align:center;position:relative;">
+      <div style="width:80px;height:80px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:38px;border:3px solid rgba(255,255,255,.4);">✓</div>
       <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:100px;padding:5px 14px;font-size:12px;font-weight:700;color:#fff;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;">Klus gepubliceerd</div>
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1;">Gefeliciteerd! 🎉</h2>
       <p style="font-size:15px;color:rgba(255,255,255,.88);line-height:1.6;max-width:420px;margin:0 auto;">Jouw klus staat nu tussen de <a onclick="closeBevestiging();showPage('klussen');switchP('klussen');" style="color:#FFD740;font-weight:800;cursor:pointer;text-decoration:underline;">Openstaande Klussen</a> en is zichtbaar voor aannemers in jouw regio.</p>
     </div>
+
+    <!-- Body -->
     <div style="padding:30px 36px 36px;">
+
+      <!-- Email info -->
       <div style="background:#F4F6FB;border:1px solid #E4E9F2;border-radius:16px;padding:20px;margin-bottom:14px;display:flex;gap:16px;align-items:flex-start;">
-        <div style="width:44px;height:44px;background:linear-gradient(135deg,#1A3A7A,#2E5FBE);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="mail" style="width:22px;height:22px;stroke:white;stroke-width:2;fill:none;margin:0;"></i></div>
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,#1A3A7A,#2E5FBE);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📧</div>
         <div>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:#0B1F4A;margin-bottom:5px;">Je kunt je klus beheren via je e-mail</div>
           <div style="font-size:13px;color:#5A6480;line-height:1.6;">Je ontvangt een e-mail met een persoonlijke beheer-link. Via die link zie je alle binnengekomen aanbiedingen, kun je informatie delen met aannemers en kies je uiteindelijk de beste vakman.</div>
         </div>
       </div>
+
+      <!-- Spam waarschuwing -->
       <div style="background:#FFF8D6;border:1px solid rgba(245,194,0,.4);border-radius:12px;padding:14px 16px;margin-bottom:24px;display:flex;align-items:flex-start;gap:10px;">
-        <i data-lucide="folder-open" style="width:22px;height:22px;flex-shrink:0;margin-top:1px;stroke:#7A5E00;stroke-width:2;fill:none;margin:0 0 0 0;"></i>
+        <span style="font-size:20px;flex-shrink:0;margin-top:1px;">📁</span>
         <div style="font-size:13px;color:#7A5E00;line-height:1.55;font-weight:600;">Geen e-mail ontvangen? Vergeet niet om in je <strong>spam / ongewenste e-mail</strong> folder te kijken. E-mails van Klushub belanden hier soms automatisch.</div>
       </div>
+
+      <!-- Knoppen -->
       <div style="display:flex;flex-direction:column;gap:10px;">
-        <button onclick="closeBevestiging();showPage('klussen');switchP('klussen');" style="width:100%;padding:15px;background:#0B1F4A;color:#fff;border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:19px;cursor:pointer;">Bekijk openstaande klussen →</button>
-        <button id="bev-beheer-btn" onclick="closeBevestiging();openKlantBeheerFromBev();" style="width:100%;padding:13px;background:transparent;color:#0B1F4A;border:1.5px solid #E4E9F2;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;">Beheer mijn klus direct →</button>
+        <button onclick="closeBevestiging();showPage('klussen');switchP('klussen');" style="width:100%;padding:15px;background:#0B1F4A;color:#fff;border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+          <span>Bekijk openstaande klussen</span><span>→</span>
+        </button>
+        <button id="bev-beheer-btn" onclick="closeBevestiging();openKlantBeheerFromBev();" style="width:100%;padding:13px;background:transparent;color:#0B1F4A;border:1.5px solid #E4E9F2;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;">
+          Beheer mijn klus direct →
+        </button>
       </div>
+
+      <!-- Stappenplan link -->
       <div style="text-align:center;margin-top:18px;padding-top:18px;border-top:1px solid #E4E9F2;">
         <span style="font-size:13px;color:#5A6480;">Wat gebeurt er nu? </span>
-        <a onclick="closeBevestiging();showPage('faq');setTimeout(()=>openFaqSection('stappenplan',document.querySelector('.faq-tab')),100);" style="font-size:13px;color:#2E5FBE;font-weight:700;cursor:pointer;">Bekijk het stappenplan voor het beheren van klussen →</a>
+        <a onclick="closeBevestiging();showPage('faq');openFaqSection('stappenplan',document.querySelector('.faq-tab'));" style="font-size:13px;color:#2E5FBE;font-weight:700;cursor:pointer;text-decoration:none;">Bekijk het stappenplan voor het beheren van klussen →</a>
       </div>
+
     </div>
   </div>
 </div>
