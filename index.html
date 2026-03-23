@@ -892,7 +892,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
           <div class="form-row" style="margin-top:14px"><label class="form-label">E-mailadres *</label><input class="form-input" id="full-email" type="email" placeholder="jan@email.nl"></div>
           <div class="form-row"><label class="form-label">Telefoonnummer</label><input class="form-input" id="full-telefoon" type="tel" placeholder="06 12345678"></div>
 
-          <button class="submit-btn" id="full-btn" onclick="submitFullForm()"><span>Klus publiceren</span><span>→</span></button>
+          <button type="button" class="submit-btn" id="full-btn" onclick="submitFullForm()"><span>Klus publiceren</span><span>→</span></button>
           <p style="font-size:12px;color:var(--gray-text);text-align:center;margin-top:12px">Direct zichtbaar voor aannemers. Gratis, geen abonnement vereist.</p>
         </div>
       </div>
@@ -2630,10 +2630,11 @@ function showKlusBevestiging(klusId, token, omschrijving) {
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
     overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
     overlay.style.opacity = '1';
     overlay.style.pointerEvents = 'all';
     overlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = '';
     const beheerBtn = document.getElementById('bev-beheer-btn');
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
     try { if (window.lucide) lucide.createIcons(); } catch(e) { console.warn('Lucide icons error', e); }
