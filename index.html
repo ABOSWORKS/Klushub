@@ -684,7 +684,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
           <label class="hf-lbl">E-mailadres *</label>
           <input class="hf-inp" id="hf-email" type="email" placeholder="jouw@email.nl">
         </div>
-        <button class="hf-submit" id="hf-btn" onclick="doHeroSubmit()">
+        <button type="button" class="hf-submit" id="hf-btn" onclick="return doHeroSubmit(event)">
           <span>Klus publiceren</span><span>→</span>
         </button>
         <p class="hf-note">🔒 Gratis · Geen account · Geen verplichtingen</p>
@@ -877,7 +877,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
           <div class="form-row" style="margin-top:14px"><label class="form-label">E-mailadres *</label><input class="form-input" id="full-email" type="email" placeholder="jan@email.nl"></div>
           <div class="form-row"><label class="form-label">Telefoonnummer</label><input class="form-input" id="full-telefoon" type="tel" placeholder="06 12345678"></div>
 
-          <button type="button" class="submit-btn" id="full-btn" onclick="submitFullForm()"><span>Klus publiceren</span><span>→</span></button>
+          <button type="button" class="submit-btn" id="full-btn" onclick="return submitFullForm(event)"><span>Klus publiceren</span><span>→</span></button>
           <p style="font-size:12px;color:var(--gray-text);text-align:center;margin-top:12px">Direct zichtbaar voor aannemers. Gratis, geen abonnement vereist.</p>
         </div>
       </div>
@@ -1931,7 +1931,11 @@ async function submitHeroForm() {
   await insertKlus({ type: selectedType||'Overig', omschrijving, postcode, lat: null, lng: null, budget: budgetRaw?parseInt(budgetRaw):null, email_klant: email, naam_klant: email.split('@')[0], status: 'open' }, 'hf-btn');
 }
 
-async function submitFullForm() {
+async function submitFullForm(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
   // Veilige element checks
   const omschrEl = document.getElementById('full-omschrijving');
   const postcodeEl = document.getElementById('full-postcode');
@@ -2089,6 +2093,9 @@ function showKlusBevestiging(klusId, token, omschrijving) {
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
     overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+    overlay.classList.add('open');
     document.body.style.overflow = 'hidden';
     const beheerBtn = document.getElementById('bev-beheer-btn');
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
@@ -2101,7 +2108,12 @@ function showKlusBevestiging(klusId, token, omschrijving) {
 
 function closeBevestiging() {
   const o = document.getElementById('bevestigingOverlay');
-  if (o) o.style.display = 'none';
+  if (o) {
+    o.classList.remove('open');
+    o.style.opacity = '0';
+    o.style.visibility = 'hidden';
+    o.style.display = 'none';
+  }
   document.body.style.overflow = '';
 }
 
@@ -2122,7 +2134,11 @@ function heroWidgetTab(tab) {
   if (tu) { tu.style.background = !isSnel ? '#fff' : 'transparent'; tu.style.color = !isSnel ? '#0B1F4A' : 'rgba(255,255,255,.6)'; }
 }
 
-async function doHeroSubmit() {
+async function doHeroSubmit(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
   const omschrijving = (document.getElementById('hf-omschrijving').value || '').trim();
   const postcode     = (document.getElementById('hf-postcode').value || '').trim();
   const email        = (document.getElementById('hf-email').value || '').trim();
@@ -3468,7 +3484,7 @@ function updateNavFoto() {
 </div>
 
 <!-- ══ BEVESTIGING OVERLAY ═════════════════════════════ -->
-<div id="bevestigingOverlay" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
+<div id="bevestigingOverlay" class="bevestiging-overlay" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(7,14,34,.88);align-items:center;justify-content:center;padding:20px;overflow-y:auto;" onclick="if(event.target===this)closeBevestiging()">
   <div style="background:#fff;border-radius:28px;width:100%;max-width:580px;overflow:hidden;box-shadow:0 50px 120px rgba(0,0,0,.5);margin:auto;">
 
     <!-- Groene header -->
