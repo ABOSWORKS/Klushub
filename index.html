@@ -1882,28 +1882,25 @@ async function insertKlus(payload, btnId) {
   if (!sb) {
     await new Promise(r => setTimeout(r, 900));
     btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>';
-    showToast('✅ Klus gepubliceerd! (demo — koppel Supabase om echt op te slaan)');
-    setTimeout(() => { showPage('klussen'); switchP('klussen'); }, 1400); return;
+    showKlusBevestiging('demo-123', 'demo-token', payload.omschrijving);
+    return;
   }
+  // FIX: genereer beheer_token client-side zodat we niet op DB-response hoeven te wachten
   const beheerToken = crypto.randomUUID();
   payload.beheer_token = beheerToken;
   const { data, error } = await sb.from('klussen').insert(payload).select('id').single();
   btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>';
   if (error) { showToast('❌ Opslaan mislukt: ' + error.message, true); }
-  else { 
-    // Sla beheer token op in de browser voor apparaat-herkenning
-    if (data && data.id && beheerToken) {
-      let klussen = [];
-      try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
-      klussen.unshift({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
-      localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
-      
-      showToast('✅ Klus gepubliceerd!');
-      setTimeout(() => openKlantBeheer(data.id, beheerToken), 1000);
-    } else {
-      showToast('✅ Klus gepubliceerd!'); 
-      setTimeout(() => { showPage('klussen'); switchP('klussen'); loadKlussen(); }, 1400); 
-    }
+  else if (data && data.id) {
+    // Sla op in localStorage voor apparaat-herkenning
+    let klussen = [];
+    try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
+    klussen.unshift({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
+    localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
+    showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
+  } else {
+    showToast('✅ Klus gepubliceerd!');
+    setTimeout(() => { showPage('klussen'); switchP('klussen'); loadKlussen(); }, 1400);
   }
 }
 
