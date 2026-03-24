@@ -1547,7 +1547,7 @@ function resetFilters() {
   updateDualFill();
   updateBudgetLabels();
   applyFilters();
-  showToast('🔄 Filters gewist');
+  showToast('<i data-lucide="refresh-cw" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Filters gewist');
 }
 
 // ── Categorie ──────────────────────────────────
@@ -1851,16 +1851,18 @@ async function submitHeroForm() {
   const postcode     = document.getElementById('hf-postcode').value.trim();
   const email        = document.getElementById('hf-email').value.trim();
   const budgetRaw    = document.getElementById('hf-budget').value.replace(/[^0-9]/g,'');
+  const icon = '<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>';
 
   const errors = [];
   if (!omschrijving) errors.push('Omschrijving');
-  if (postcode && !/^\d{4}\s?[A-Za-z]{2}$/.test(postcode)) errors.push('Postcode (ongeldig formaat, bijv. 1234 AB)');
+  if (!postcode) errors.push('Postcode');
+  else if (!/^\d{4}\s?[A-Za-z]{2}$/.test(postcode)) errors.push('Postcode (ongeldig formaat, bijv. 1234 AB)');
   if (!email) errors.push('E-mailadres');
   else if (!email.includes('@')) errors.push('E-mailadres (geen @ gevonden)');
   else if (!email.includes('.')) errors.push('E-mailadres (geen punt gevonden)');
 
-  if (errors.length > 1) { showToast('⚠️ Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
-  if (errors.length === 1) { showToast('⚠️ ' + errors[0] + ' is niet correct ingevuld', true); return; }
+  if (errors.length > 1) { showToast(icon + 'Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
+  if (errors.length === 1) { showToast(icon + errors[0] + ' is niet correct ingevuld', true); return; }
   const selectedType = [...document.querySelectorAll('.hf-chip.on')].map(c => c.textContent.trim()).join(', ');
   
   const btn = document.getElementById('hf-btn');
@@ -1876,6 +1878,7 @@ async function submitFullForm() {
   const lname        = document.getElementById('full-lname').value.trim();
   const budgetRaw    = document.getElementById('full-budget').value.replace(/[^0-9]/g,'');
   const deadline     = document.getElementById('full-deadline').value;
+  const icon = '<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>';
 
   const errors = [];
   if (!omschrijving) errors.push('Omschrijving');
@@ -1888,8 +1891,8 @@ async function submitFullForm() {
   else if (!email.includes('.')) errors.push('E-mailadres (geen punt gevonden)');
   if (!deadline) errors.push('Deadline aanbiedingen');
 
-  if (errors.length > 1) { showToast('⚠️ Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
-  if (errors.length === 1) { showToast('⚠️ ' + errors[0] + ' is niet correct ingevuld', true); return; }
+  if (errors.length > 1) { showToast(icon + 'Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
+  if (errors.length === 1) { showToast(icon + errors[0] + ' is niet correct ingevuld', true); return; }
   const selectedType = [...document.querySelectorAll('#full-chips .chip.on')].map(c => c.textContent.trim()).join(', ');
   
   const btn = document.getElementById('full-btn');
@@ -1915,7 +1918,7 @@ async function insertKlus(payload, btnId) {
   payload.beheer_token = beheerToken;
   const { data, error } = await sb.from('klussen').insert(payload).select('id').single();
   btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>';
-  if (error) { showToast('❌ Opslaan mislukt: ' + error.message, true); }
+  if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true); }
   else if (data && data.id) {
     // Sla op in localStorage voor apparaat-herkenning
     let klussen = [];
@@ -1924,7 +1927,7 @@ async function insertKlus(payload, btnId) {
     localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
     showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
   } else {
-    showToast('🎉 Klus gepubliceerd!');
+    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus gepubliceerd!');
     setTimeout(() => { showPage('klussen'); switchP('klussen'); loadKlussen(); }, 1400);
   }
 }
@@ -2043,7 +2046,7 @@ function showKlusBevestiging(klusId, token, omschrijving) {
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
     if (window.lucide) lucide.createIcons();
   } else {
-    showToast('🎉 Klus gepubliceerd! Check je e-mail voor de beheer-link.');
+    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus gepubliceerd! Check je e-mail voor de beheer-link.');
     setTimeout(() => { showPage('klussen'); switchP('klussen'); }, 1500);
   }
 }
@@ -2081,16 +2084,18 @@ async function doHeroSubmit() {
   const postcode     = (document.getElementById('hf-postcode').value || '').trim();
   const email        = (document.getElementById('hf-email').value || '').trim();
   const budgetRaw    = (document.getElementById('hf-budget').value || '').replace(/[^0-9]/g,'');
+  const icon = '<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>';
 
   const errors = [];
   if (!omschrijving) errors.push('Omschrijving');
-  if (postcode && !/^\d{4}\s?[A-Za-z]{2}$/.test(postcode)) errors.push('Postcode (ongeldig formaat, bijv. 1234 AB)');
+  if (!postcode) errors.push('Postcode');
+  else if (!/^\d{4}\s?[A-Za-z]{2}$/.test(postcode)) errors.push('Postcode (ongeldig formaat, bijv. 1234 AB)');
   if (!email) errors.push('E-mailadres');
   else if (!email.includes('@')) errors.push('E-mailadres (geen @ gevonden)');
   else if (!email.includes('.')) errors.push('E-mailadres (geen punt gevonden)');
 
-  if (errors.length > 1) { showToast('⚠️ Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
-  if (errors.length === 1) { showToast('⚠️ ' + errors[0] + ' is niet correct ingevuld', true); return; }
+  if (errors.length > 1) { showToast(icon + 'Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
+  if (errors.length === 1) { showToast(icon + errors[0] + ' is niet correct ingevuld', true); return; }
   const selectedType = [...document.querySelectorAll('#hf-chips-wrap .hf-chip.on')]
     .map(c => (c.textContent||'').trim()).filter(Boolean).join(', ') || 'Overig';
   const btn = document.getElementById('hf-btn');
@@ -2163,7 +2168,7 @@ function closeReviewModal() {
 }
 async function submitReview() {
   if (!_reviewContext) return;
-  if (!REVIEW_CRITERIA.every(c => _reviewScores[c.key])) { showToast('⚠️ Vul alle 5 criteria in', true); return; }
+  if (!REVIEW_CRITERIA.every(c => _reviewScores[c.key])) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul alle 5 criteria in', true); return; }
   const btn = document.getElementById('reviewSubmitBtn');
   btn.disabled = true; btn.textContent = 'Versturen…';
   if (!sb) { await new Promise(r => setTimeout(r,700)); btn.disabled=false; btn.textContent='Review versturen ★'; showReviewSuccess(); return; }
@@ -2176,7 +2181,7 @@ async function submitReview() {
     tekst: document.getElementById('reviewTekst').value.trim() || null,
   });
   btn.disabled=false; btn.textContent='Review versturen ★';
-  if (error) showToast('❌ ' + error.message, true);
+  if (error) showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + error.message, true);
   else showReviewSuccess();
 }
 function showReviewSuccess() {
@@ -2186,11 +2191,11 @@ function showReviewSuccess() {
 
 async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aannemerId) {
   if (!confirm(`Wil je ${aannemerNaam} definitief kiezen?\n\nDe aannemer ontvangt jouw contactgegevens. Andere aanbiedingen worden afgewezen.`)) return;
-  if (!sb) { showToast('🎉 ' + aannemerNaam + ' gekozen! (demo)'); return; }
+  if (!sb) { showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen! (demo)'); return; }
   const { error } = await sb.rpc('beheer_update_aanbieding', { p_klus_id: klusId, p_token: token, p_aanbieding_id: aanbiedingId, p_status: 'geaccepteerd' });
-  if (error) { showToast('❌ Fout: ' + error.message, true); return; }
+  if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Fout: ' + error.message, true); return; }
   await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gekozen' });
-  showToast('🎉 ' + aannemerNaam + ' gekozen!');
+  showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen!');
   openKlantBeheer(klusId, token);
   setTimeout(() => openReviewModal({ klusId, aannemerId, aannemerNaam, reviewerType: 'klant' }), 2000);
 }
@@ -2349,20 +2354,20 @@ async function beheerSluitKlus(klusId, token) {
   if (!confirm('Weet je zeker dat je deze klus wilt sluiten voor nieuwe aanbiedingen?')) return;
   const { data, error } = await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gesloten' });
   if (error) showToast('Fout bij sluiten klus', true);
-  else { showToast('🎉 Klus succesvol gesloten!'); openKlantBeheer(klusId, token); }
+  else { showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus succesvol gesloten!'); openKlantBeheer(klusId, token); }
 }
 
 async function beheerOpenKlus(klusId, token) {
   const { data, error } = await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'open' });
   if (error) showToast('Fout bij verversen klus', true);
-  else { showToast('🎉 Klus staat weer open!'); openKlantBeheer(klusId, token); }
+  else { showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus staat weer open!'); openKlantBeheer(klusId, token); }
 }
 
 async function beheerAccepteerBod(klusId, token, aanbiedingId, status) {
   if (status === 'geaccepteerd' && !confirm('Weet je zeker dat je dit bod definitief wilt accepteren? Andere aannemers worden hierna mogelijk afgewezen.')) return;
   const { data, error } = await sb.rpc('beheer_update_aanbieding', { p_klus_id: klusId, p_token: token, p_aanbieding_id: aanbiedingId, p_status: status });
   if (error) showToast('Fout bij updaten bod', true);
-  else { showToast('🎉 Status bod bijgewerkt!'); openKlantBeheer(klusId, token); }
+  else { showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Status bod bijgewerkt!'); openKlantBeheer(klusId, token); }
 }
 
 // ── Edit klus ──────────────────────────────────
@@ -2399,7 +2404,7 @@ async function saveEditKlus() {
   const postcode   = document.getElementById('edit-postcode').value.trim();
   const stad       = document.getElementById('edit-stad').value.trim();
 
-  if (!omschr) { showToast('⚠️ Omschrijving mag niet leeg zijn', true); return; }
+  if (!omschr) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Omschrijving mag niet leeg zijn', true); return; }
 
   // Bepaal of we de status ook op 'open' zetten (als deadline in de toekomst is)
   const nu = new Date();
@@ -2430,9 +2435,9 @@ async function saveEditKlus() {
 
   btn.disabled = false; btn.innerHTML = 'Wijzigingen opslaan →';
 
-  if (error) { showToast('❌ Opslaan mislukt: ' + error.message, true); }
+  if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true); }
   else {
-    showToast('🎉 Klus bijgewerkt' + (nieuweStatus==='open' ? ' en weer actief!' : '!'));
+    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus bijgewerkt' + (nieuweStatus==='open' ? ' en weer actief!' : '!'));
     closeEditKlus();
     await loadMijnKlussen();
     await loadKlussen();
@@ -2465,7 +2470,7 @@ async function saveEditProfile() {
   
   const fname = document.getElementById('ep-fname').value.trim();
   const lname = document.getElementById('ep-lname').value.trim();
-  if (!fname || !lname) { showToast('⚠️ Voornaam en achternaam zijn verplicht', true); return; }
+  if (!fname || !lname) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Voornaam en achternaam zijn verplicht', true); return; }
 
   const btn = document.getElementById('ep-save-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner spinner-dark"></span>';
@@ -2501,9 +2506,9 @@ async function saveEditProfile() {
   btn.disabled = false; btn.innerHTML = 'Profiel opslaan →';
 
   if (error) { 
-    showToast('❌ Opslaan mislukt: ' + error.message, true); 
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true); 
   } else {
-    showToast('🎉 Profiel succesvol bijgewerkt!');
+    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Profiel succesvol bijgewerkt!');
     closeEditProfile();
     currentUser = { ...currentUser, ...payload, id: newId };
     updateNavAuth();
@@ -2531,18 +2536,18 @@ async function submitAanbieding() {
   const prijs   = document.getElementById('m-prijs').value.replace(/[^0-9]/g,'');
   const doorloop = document.getElementById('m-doorloop').value.trim();
   const bericht  = document.getElementById('m-bericht').value.trim();
-  if (!prijs) { showToast('⚠️ Vul een prijs in', true); return; }
+  if (!prijs) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul een prijs in', true); return; }
   const btn = document.getElementById('m-send-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   if (!sb || !currentKlusId || currentKlusId.startsWith('demo')) {
     await new Promise(r => setTimeout(r, 700));
     btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
-    closeModal(); showToast('🎉 Aanbieding verstuurd! (demo modus)'); return;
+    closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)'); return;
   }
   const { error } = await sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht });
   btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
-  if (error) showToast('❌ Versturen mislukt: ' + error.message, true);
-  else { closeModal(); showToast('🎉 Aanbieding verstuurd!'); }
+  if (error) showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
+  else { closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!'); }
 }
 
 // ══════════════════════════════════════════════════
@@ -2562,7 +2567,7 @@ function switchAuthTab(tab) {
 function setAuthErr(form, msg) { const el=document.getElementById(form+'-err'); el.textContent=msg; el.classList.toggle('show',!!msg); }
 
 async function doLogin() {
-  if (!sb) { showToast('⚠️ Supabase niet geconfigureerd', true); return; }
+  if (!sb) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Supabase niet geconfigureerd', true); return; }
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-pass').value;
   if (!email||!pass) { setAuthErr('login','Vul e-mailadres en wachtwoord in.'); return; }
@@ -2571,11 +2576,11 @@ async function doLogin() {
   const { error } = await sb.auth.signInWithPassword({ email, password: pass });
   btn.disabled=false; btn.innerHTML='Inloggen →';
   if (error) setAuthErr('login', error.message==='Invalid login credentials' ? 'E-mailadres of wachtwoord onjuist.' : error.message);
-  else { closeAuth(); showToast('👋 Welkom terug!'); if (currentKlusId) openModal(document.getElementById('mTitle').textContent, document.getElementById('mMeta').textContent, document.getElementById('mBudget').textContent); }
+  else { closeAuth(); showToast('<i data-lucide="hand" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Welkom terug!'); if (currentKlusId) openModal(document.getElementById('mTitle').textContent, document.getElementById('mMeta').textContent, document.getElementById('mBudget').textContent); }
 }
 
 async function doRegister() {
-  if (!sb) { showToast('⚠️ Supabase niet geconfigureerd', true); return; }
+  if (!sb) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Supabase niet geconfigureerd', true); return; }
   const fname=document.getElementById('reg-fname').value.trim(), lname=document.getElementById('reg-lname').value.trim();
   const company=document.getElementById('reg-company').value.trim(), email=document.getElementById('reg-email').value.trim();
   const pass=document.getElementById('reg-pass').value, spec=document.getElementById('reg-spec').value;
@@ -2591,7 +2596,7 @@ async function doRegister() {
   setTimeout(() => { showPage('klussen'); switchP('klussen'); }, 1200);
 }
 
-async function doLogout() { if (sb) await sb.auth.signOut(); else { currentUser=null; updateNavAuth(); } showToast('👋 Je bent uitgelogd.'); }
+async function doLogout() { if (sb) await sb.auth.signOut(); else { currentUser=null; updateNavAuth(); } showToast('<i data-lucide="hand" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Je bent uitgelogd.'); }
 
 function openLock()  { document.getElementById('lockOverlay').classList.add('open');    document.body.style.overflow='hidden'; }
 function closeLock() { document.getElementById('lockOverlay').classList.remove('open'); document.body.style.overflow=''; }
@@ -2638,7 +2643,8 @@ function toggleSave(btn) {
   showToast(btn.classList.contains('saved')?'Klus opgeslagen':'Klus verwijderd');
 }
 function showToast(msg, isErr=false) {
-  const t=document.getElementById('toast'); t.textContent=msg;
+  const t=document.getElementById('toast'); t.innerHTML=msg;
+  if(window.lucide) lucide.createIcons({els:[t]});
   t.classList.toggle('err',isErr); t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3400);
 }
@@ -2972,7 +2978,7 @@ function resetAnFilters() {
   document.getElementById('an-regio-status').textContent = '';
   document.querySelectorAll('.city-chip').forEach(c => c.classList.remove('active'));
   applyAnFilters();
-  showToast('🔄 Filters gewist');
+  showToast('<i data-lucide="refresh-cw" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Filters gewist');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -3045,7 +3051,7 @@ function onFotoSelected(input) {
   if (!file) return;
   // Valideer grootte (max 2MB)
   if (file.size > 2 * 1024 * 1024) {
-    showToast('⚠️ Foto is te groot. Maximum is 2 MB.', true);
+    showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Foto is te groot. Maximum is 2 MB.', true);
     input.value = '';
     return;
   }
@@ -3120,7 +3126,7 @@ async function saveEditProfile() {
   if (!sb) { showToast('Demo modus'); return; }
   const fname = document.getElementById('ep-fname').value.trim();
   const lname = document.getElementById('ep-lname').value.trim();
-  if (!fname || !lname) { showToast('⚠️ Voornaam en achternaam zijn verplicht', true); return; }
+  if (!fname || !lname) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Voornaam en achternaam zijn verplicht', true); return; }
 
   const btn = document.getElementById('ep-save-btn');
   btn.disabled = true;
@@ -3134,7 +3140,7 @@ async function saveEditProfile() {
     btn.innerHTML = '<span class="spinner spinner-dark"></span> Foto uploaden…';
     fotoUrl = await uploadFotoToSupabase(_fotoFile, currentUser.auth_id);
     if (!fotoUrl) {
-      showToast('⚠️ Foto upload mislukt. Profiel wordt opgeslagen zonder foto.', true);
+      showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Foto upload mislukt. Profiel wordt opgeslagen zonder foto.', true);
     }
   } else if (_fotoRemoved) {
     fotoUrl = null;
@@ -3172,9 +3178,9 @@ async function saveEditProfile() {
   btn.innerHTML = 'Profiel opslaan →';
 
   if (error) {
-    showToast('❌ Opslaan mislukt: ' + error.message, true);
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true);
   } else {
-    showToast('🎉 Profiel succesvol bijgewerkt!');
+    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Profiel succesvol bijgewerkt!');
     closeEditProfile();
     currentUser = { ...currentUser, ...payload, id: newId };
     updateNavAuth();
