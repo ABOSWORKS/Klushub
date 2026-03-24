@@ -2644,8 +2644,8 @@ function toggleSave(btn) {
 }
 function showToast(msg, isErr=false) {
   const t=document.getElementById('toast'); t.innerHTML=msg;
-  if(window.lucide) lucide.createIcons({els:[t]});
   t.classList.toggle('err',isErr); t.classList.add('show');
+  if(window.lucide) { try { lucide.createIcons({els:[t]}); } catch(e) { try { lucide.createIcons(); } catch(e2) {} } }
   setTimeout(()=>t.classList.remove('show'),3400);
 }
 function initReveal() {
