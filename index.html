@@ -1387,6 +1387,66 @@ async function loadProfile(user) {
   updateNavAuth();
 }
 
+// ══════════════════════════════════════════════════
+// 2B. EMAIL NOTIFICATION SYSTEM
+// ══════════════════════════════════════════════════
+async function sendEmailNotification(type, recipientEmail, data) {
+  /**
+   * Email notification system using Supabase email service
+   *
+   * Types:
+   * - 'job_posted': Customer posts a job
+   * - 'bid_received': Customer receives a bid
+   * - 'bid_accepted': Contractor's bid was accepted
+   * - 'review_posted': Contractor receives a review
+   *
+   * @param {string} type - Email type
+   * @param {string} recipientEmail - Who to send email to
+   * @param {object} data - Context data (klusId, aannemer, etc)
+   */
+  if (!sb || !recipientEmail) return; // Demo mode or no email
+
+  try {
+    // Use Supabase Edge Function or fallback to demo mode
+    const { data: result, error } = await sb.functions.invoke('send-notification-email', {
+      body: { type, recipientEmail, data }
+    });
+
+    if (error) {
+      console.warn('Email notification failed (demo mode):', error.message);
+      // In production, this would be logged to error tracking
+      // For now, fail silently so UI doesn't break
+    }
+  } catch(e) {
+    // Network/function error - fail silently
+    console.warn('Email system unavailable:', e.message);
+  }
+}
+
+// Email template generators (for future Edge Function implementation)
+function getEmailTemplate(type, data) {
+  const templates = {
+    job_posted: {
+      subject: `Jouw klus "${data.omschrijving?.substring(0, 30)}..." is gepubliceerd!`,
+      body: `Hallo ${data.voornaam || 'daar'},\n\nJouw klus is gepubliceerd en zichtbaar voor ${data.specialisatie || 'vakmannen'} in de buurt.\n\nVerwacht: ${data.aanbiedingen || '4-8'} aanbiedingen in 24 uur.\n\nBeheer jouw klus: [link]`
+    },
+    bid_received: {
+      subject: `Nieuwe aanbieding! ${data.aannemer?.voornaam} wil jouw klus aanpakken`,
+      body: `Hallo ${data.voornaam},\n\n${data.aannemer?.voornaam} ${data.aannemer?.achternaam} (${data.aannemer?.rating || 0}⭐) heeft een aanbieding gedaan op jouw klus.\n\nPrijs: €${data.prijs}\nTijdsduur: ${data.doorloop}\n\nBekijk en vergelijk: [link]`
+    },
+    bid_accepted: {
+      subject: 'Je bent gekozen! 🎉',
+      body: `Hallo ${data.voornaam},\n\nGefeliciteerd! Je bent gekozen voor de klus "${data.omschrijving?.substring(0, 30)}..."\n\nAankomende stappen:\n1. Bel de klant om details af te spreken\n2. Maak een planning\n3. Voer de klus uit\n4. Vraag om review\n\nContactgegevens klant: ${data.klant_email}`
+    },
+    review_posted: {
+      subject: `⭐ Je hebt een review! ${data.rating || 5} sterren`,
+      body: `Hallo ${data.voornaam},\n\n${data.klant_voornaam} heeft je werk beoordeeld:\n\n"${data.review_text}"\n\nBedankt voor je werk!`
+    }
+  };
+
+  return templates[type] || { subject: 'Klushub notificatie', body: 'Iets veranderd op Klushub.' };
+}
+
 function updateNavAuth() {
   const guest = document.getElementById('nav-guest');
   const loggedin = document.getElementById('nav-loggedin');
@@ -2042,7 +2102,16 @@ async function insertKlus(payload, btnId) {
     let klussen = [];
     try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
     klussen.unshift({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
-    localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
+    try { localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen)); } catch(e) { console.warn('localStorage vol'); }
+
+    // Send confirmation email to customer
+    sendEmailNotification('job_posted', payload.email, {
+      id: data.id,
+      omschrijving: payload.omschrijving,
+      voornaam: payload.naam_klant || 'daar',
+      specialisatie: payload.type
+    });
+
     showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
   } else {
     showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus gepubliceerd!');
@@ -2290,17 +2359,37 @@ async function submitReview() {
   const btn = document.getElementById('reviewSubmitBtn');
   btn.disabled = true; btn.textContent = 'Versturen…';
   if (!sb) { await new Promise(r => setTimeout(r,700)); btn.disabled=false; btn.textContent='Review versturen ★'; showReviewSuccess(); return; }
+
+  const reviewText = document.getElementById('reviewTekst').value.trim() || null;
+  const avgScore = (Object.values(_reviewScores).reduce((a,b)=>a+b,0) / Object.keys(_reviewScores).length).toFixed(1);
+
   const { error } = await sb.from('reviews').insert({
     klus_id: _reviewContext.klusId, aannemer_id: _reviewContext.aannemerId,
     reviewer_type: 'klant',
     score_kwaliteit: _reviewScores.kwaliteit, score_communicatie: _reviewScores.communicatie,
     score_prijs_kwaliteit: _reviewScores.prijs_kwaliteit, score_tijdigheid: _reviewScores.tijdigheid,
     score_netheid: _reviewScores.netheid,
-    tekst: document.getElementById('reviewTekst').value.trim() || null,
+    tekst: reviewText,
   });
+
   btn.disabled=false; btn.textContent='Review versturen ★';
-  if (error) showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + error.message, true);
-  else showReviewSuccess();
+  if (error) {
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + error.message, true);
+  } else {
+    // Get contractor details for email
+    const { data: aannemerData } = await sb.from('aannemers').select('email, voornaam').eq('id', _reviewContext.aannemerId).single();
+
+    // Send notification to contractor about review
+    if (aannemerData?.email) {
+      sendEmailNotification('review_posted', aannemerData.email, {
+        voornaam: aannemerData.voornaam || 'Vakman',
+        rating: Math.round(avgScore),
+        review_text: reviewText || 'Goed werk geleverd!'
+      });
+    }
+
+    showReviewSuccess();
+  }
 }
 function showReviewSuccess() {
   document.getElementById('review-form-body').style.display = 'none';
@@ -2310,9 +2399,25 @@ function showReviewSuccess() {
 async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aannemerId) {
   if (!confirm(`Wil je ${aannemerNaam} definitief kiezen?\n\nDe aannemer ontvangt jouw contactgegevens. Andere aanbiedingen worden afgewezen.`)) return;
   if (!sb) { showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen! (demo)'); return; }
+
   const { error } = await sb.rpc('beheer_update_aanbieding', { p_klus_id: klusId, p_token: token, p_aanbieding_id: aanbiedingId, p_status: 'geaccepteerd' });
   if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Fout: ' + error.message, true); return; }
+
   await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gekozen' });
+
+  // Get contractor and job details for email
+  const { data: aannemerData } = await sb.from('aannemers').select('email, voornaam, achternaam').eq('id', aannemerId).single();
+  const { data: klusData } = await sb.from('klussen').select('omschrijving, email_klant').eq('id', klusId).single();
+
+  // Send notification to contractor
+  if (aannemerData?.email) {
+    sendEmailNotification('bid_accepted', aannemerData.email, {
+      voornaam: aannemerData.voornaam || 'Vakman',
+      omschrijving: klusData?.omschrijving || 'Je klus',
+      klant_email: klusData?.email_klant || ''
+    });
+  }
+
   showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen!');
   openKlantBeheer(klusId, token);
   setTimeout(() => openReviewModal({ klusId, aannemerId, aannemerNaam, reviewerType: 'klant' }), 2000);
@@ -2662,10 +2767,31 @@ async function submitAanbieding() {
     btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
     closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)'); return;
   }
-  const { error } = await sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht });
+  const { data: bidData, error } = await sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht }).select();
   btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
-  if (error) showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
-  else { closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!'); }
+  if (error) {
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
+  } else {
+    // Get job details for email notification
+    const { data: klusData } = await sb.from('klussen').select('email_klant, omschrijving').eq('id', currentKlusId).single();
+
+    // Send notification to customer
+    if (klusData?.email_klant) {
+      sendEmailNotification('bid_received', klusData.email_klant, {
+        omschrijving: klusData.omschrijving,
+        aannemer: {
+          voornaam: currentUser.voornaam || 'Een vakman',
+          achternaam: currentUser.achternaam || '',
+          rating: currentUser.score || 0
+        },
+        prijs: prijs,
+        doorloop: doorloop
+      });
+    }
+
+    closeModal();
+    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!');
+  }
 }
 
 // ══════════════════════════════════════════════════
