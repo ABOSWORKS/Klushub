@@ -85,3 +85,10 @@ Additional fixes in this round:
 - cleared stale aannemer regio state when geocoding fails (reset lat/lng, hide radius UI, re-apply filters)
 - improved klus regio filtering to also use city-coordinate fallback when klus coordinates are missing
 - added postcode normalization (5705Cl -> 5705 CL) and postcode->stad autofill flow for the full klus form
+
+## Playwright QA Setup
+
+- added Playwright project setup files (`package.json`, `playwright.config.js`) and ignore rules for test artifacts
+- added deterministic smoke tests for profile edit, aannemer regio filter behavior, klus regio filter behavior, and postcode->stad autofill
+- installed `@playwright/test` plus Chromium browser binary
+- validated smoke path with `npm run test:smoke` => `SMOKE_OK`
