@@ -1927,8 +1927,7 @@ async function insertKlus(payload, btnId) {
     localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
     showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
   } else {
-    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus gepubliceerd!');
-    setTimeout(() => { showPage('klussen'); switchP('klussen'); loadKlussen(); }, 1400);
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus kon niet veilig worden opgeslagen. Probeer het opnieuw.', true);
   }
 }
 
@@ -1980,10 +1979,11 @@ async function loadMijnKlussen() {
 
   const now = new Date();
   body.innerHTML = data.map(aanb => {
-    const k = aanb.klussen;
-    const isVerlopen = k.status === 'open' && k.deadline && new Date(k.deadline) < now;
-    const klusStatus = isVerlopen ? 'verlopen' : k.status;
-    const statusLabels = { open:'Klus Open', gesloten:'Klus Gesloten', verlopen:'Klus Verlopen', geannuleerd:'Klus Geannuleerd' };
+    const k = aanb.klussen || {};
+    const klusStatusBase = k.status || 'onbekend';
+    const isVerlopen = klusStatusBase === 'open' && k.deadline && new Date(k.deadline) < now;
+    const klusStatus = isVerlopen ? 'verlopen' : klusStatusBase;
+    const statusLabels = { open:'Klus Open', gesloten:'Klus Gesloten', verlopen:'Klus Verlopen', geannuleerd:'Klus Geannuleerd', onbekend:'Klus niet beschikbaar' };
     
     // Status van de aanbieding zelf
     const ast = aanb.status;
@@ -1998,7 +1998,7 @@ async function loadMijnKlussen() {
     return `
     <div class="mkp-klus" style="border-left: 3px solid ${aColors[ast]}">
       <div class="mkp-klus-top">
-        <div class="mkp-klus-title">${escHtml((k.omschrijving||'').substring(0,70))}</div>
+        <div class="mkp-klus-title">${escHtml((k.omschrijving||'Klus niet meer beschikbaar').substring(0,70))}</div>
         <span class="mkp-status" style="background:${aBgColors[ast]}; color:${aColors[ast]}; border: 1px solid ${aColors[ast]}40">${aLabels[ast]||ast}</span>
       </div>
       <div class="mkp-meta" style="margin-top:8px; line-height:1.5">
@@ -2154,9 +2154,10 @@ function setStarRating(key, val) {
   _reviewScores[key] = val;
   const row = document.getElementById('stars-' + key);
   if (!row) return;
-  row.querySelectorAll('.star-btn').forEach(btn => {
-    btn.classList.toggle('lit', parseInt(btn.textContent) <= val);
-    btn.style.color = parseInt(btn.textContent) <= val ? '#F5C200' : '#D1D5DB';
+  row.querySelectorAll('.star-btn').forEach((btn, index) => {
+    const isLit = index + 1 <= val;
+    btn.classList.toggle('lit', isLit);
+    btn.style.color = isLit ? '#F5C200' : '#D1D5DB';
   });
   const scores = Object.values(_reviewScores);
   if (scores.length > 0) document.getElementById('reviewTotalScore').textContent = (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1);
@@ -2251,7 +2252,7 @@ async function openKlantBeheer(klusId, token) {
 
   if (!sb) {
     body.innerHTML = '<div class="mkp-empty">Demo modus: geen backend gekoppeld.</div>';
-    return;
+    return true;
   }
 
   // Roep de beveiligde Postgres RPC functie aan
@@ -2264,7 +2265,7 @@ async function openKlantBeheer(klusId, token) {
         <div style="font-size:15px;font-weight:600">Toegang geweigerd</div>
         <p style="font-size:13px;margin-top:6px">Oeps, heb je de juiste beheer-link? Deze klus is niet gevonden of je hebt geen toegang.</p>
       </div>`;
-    return;
+    return false;
   }
 
   const k = data;
@@ -2348,6 +2349,7 @@ async function openKlantBeheer(klusId, token) {
 
   body.innerHTML = html;
   if (window.lucide) lucide.createIcons();
+  return true;
 }
 
 async function beheerSluitKlus(klusId, token) {
@@ -2590,7 +2592,18 @@ async function doRegister() {
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Account aanmaken…';
   const { data: authData, error: authErr } = await sb.auth.signUp({ email, password: pass });
   if (authErr) { btn.disabled=false; btn.innerHTML='Account aanmaken →'; setAuthErr('register',authErr.message); return; }
-  await sb.from('aannemers').insert({ auth_id: authData.user.id, voornaam: fname, achternaam: lname, bedrijfsnaam: company, specialisme: spec, abonnement: 'starter' });
+  if (!authData || !authData.user || !authData.user.id) {
+    btn.disabled=false; btn.innerHTML='Account aanmaken →';
+    setAuthErr('register','Registratie is niet afgerond. Probeer het opnieuw.');
+    return;
+  }
+  const { error: profileErr } = await sb.from('aannemers').insert({ auth_id: authData.user.id, voornaam: fname, achternaam: lname, bedrijfsnaam: company, specialisme: spec, abonnement: 'starter' });
+  if (profileErr) {
+    await sb.auth.signOut();
+    btn.disabled=false; btn.innerHTML='Account aanmaken →';
+    setAuthErr('register','Account aangemaakt, maar het profiel kon niet worden opgeslagen. Probeer opnieuw in te loggen of neem contact op.');
+    return;
+  }
   btn.disabled=false; btn.innerHTML='Account aanmaken →';
   closeAuth(); showToast(`✅ Welkom bij Klushub, ${fname}! Check je e-mail.`);
   setTimeout(() => { showPage('klussen'); switchP('klussen'); }, 1200);
@@ -3219,20 +3232,16 @@ function updateNavFoto() {
   if (urlParams.has('beheer') && urlParams.has('token')) {
     const kId = urlParams.get('beheer');
     const tkn = urlParams.get('token');
-    // Verwijder params uit de URL bar voor netheid (optioneel, maar we laten 't voor referentie staan of vegen 't schoon)
-    window.history.replaceState({}, document.title, window.location.pathname);
-    
-    // Sla meteen ook op in localStorage
-    let klussen = [];
-    try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
-    // Check of tie al bestaat
-    if (!klussen.find(k => k.id === kId)) {
-      klussen.unshift({ id: kId, token: tkn, omschrijving: 'Klus via e-mail link', datum: Date.now() });
-      localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
+    const opened = await openKlantBeheer(kId, tkn);
+    if (opened) {
+      let klussen = [];
+      try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
+      if (!klussen.find(k => k.id === kId)) {
+        klussen.unshift({ id: kId, token: tkn, omschrijving: 'Klus via e-mail link', datum: Date.now() });
+        localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
-    
-    // En open direct the Dashboard
-    openKlantBeheer(kId, tkn);
   }
 })();
 </script>
