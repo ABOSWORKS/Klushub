@@ -67,3 +67,9 @@ Additional fixes in this round:
 - added `openSavedKlusFromList()` with cleanup path for stale saved beheer links
 - added `removeGeplaatsteKlus()` for explicit local cleanup
 - confirmation modal direct beheer CTA now preserves the just-created beheer context during close
+
+## FAQ White Screen Root Cause
+
+- The FAQ white screen was caused by a missing closing </div> in the mijnKlussenOverlay markup
+- Because that overlay container was left open, #page-faq and the sections after it were parsed inside the overlay instead of as normal body-level pages
+- Added the missing closing tag so #page-faq is once again a direct body child and the FAQ page can render as a normal page

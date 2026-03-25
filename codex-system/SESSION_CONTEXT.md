@@ -99,3 +99,4 @@ Committed on Codex branch:
 
 
 
+- Fixed FAQ white screen on 2026-03-25 by restoring a missing closing </div> for mijnKlussenOverlay; this moved #page-faq back to a normal body-level page instead of being nested inside the overlay
