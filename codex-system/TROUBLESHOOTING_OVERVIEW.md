@@ -56,3 +56,14 @@ Additional fixes in this round:
 - made confirmation modal close restore `display:none` after close transition
 - reset confirmation overlay scroll position on open
 - improved placed-jobs list rendering so missing descriptions do not render as broken `...`
+
+## Transaction And Overlay Follow-up
+
+Additional fixes in this round:
+
+- `beheerKiesAannemer()` now checks both RPC steps before showing success and opening the review flow
+- added overlay scroll-lock helpers for stacked overlays in the main customer flows
+- applied overlay lock tracking to review modal, bevestiging modal, klant beheer, geplaatste klussen, and mijn aanbiedingen
+- added `openSavedKlusFromList()` with cleanup path for stale saved beheer links
+- added `removeGeplaatsteKlus()` for explicit local cleanup
+- confirmation modal direct beheer CTA now preserves the just-created beheer context during close

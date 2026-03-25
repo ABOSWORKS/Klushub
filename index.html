@@ -1931,13 +1931,15 @@ async function insertKlus(payload, btnId) {
 // 8. MIJN KLUSSEN (klantdashboard + archief)
 // ══════════════════════════════════════════════════
 async function openMijnKlussen() {
-  document.getElementById('mijnKlussenOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  const overlay = document.getElementById('mijnKlussenOverlay');
+  overlay.classList.add('open');
+  markOverlayOpen(overlay);
   await loadMijnKlussen();
 }
 function closeMijnKlussen() {
-  document.getElementById('mijnKlussenOverlay').classList.remove('open');
-  document.body.style.overflow = '';
+  const overlay = document.getElementById('mijnKlussenOverlay');
+  overlay.classList.remove('open');
+  markOverlayClosed(overlay);
 }
 
 async function loadMijnKlussen() {
@@ -2037,7 +2039,7 @@ function showKlusBevestiging(klusId, token, omschrijving) {
     overlay.style.opacity = '1';
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
+    markOverlayOpen(overlay);
 
     const beheerBtn = document.getElementById('bev-beheer-btn');
     if (beheerBtn) beheerBtn.style.display = klusId === 'demo-123' ? 'none' : 'block';
@@ -2048,18 +2050,22 @@ function showKlusBevestiging(klusId, token, omschrijving) {
   }
 }
 
-function closeBevestiging() {
+function closeBevestiging(preserveContext=false) {
   const o = document.getElementById('bevestigingOverlay');
   if (o) {
     o.classList.remove('open');
     o.setAttribute('aria-hidden', 'true');
     o.style.opacity = '0';
     o.style.visibility = 'hidden';
+    markOverlayClosed(o);
     setTimeout(() => {
       if (!o.classList.contains('open')) o.style.display = 'none';
     }, 220);
   }
-  document.body.style.overflow = '';
+  if (!preserveContext) {
+    _bevKlusId = null;
+    _bevToken = null;
+  }
 }
 
 function openKlantBeheerFromBev() {
@@ -2120,6 +2126,26 @@ function toggleFaq(btn) {
   if (!isOpen) item.classList.add('open');
 }
 
+let overlayLockCount = 0;
+function lockBodyScroll() {
+  overlayLockCount += 1;
+  document.body.style.overflow = 'hidden';
+}
+function unlockBodyScroll() {
+  overlayLockCount = Math.max(overlayLockCount - 1, 0);
+  if (overlayLockCount === 0) document.body.style.overflow = '';
+}
+function markOverlayOpen(el) {
+  if (!el || el.dataset.scrollLocked === 'true') return;
+  el.dataset.scrollLocked = 'true';
+  lockBodyScroll();
+}
+function markOverlayClosed(el) {
+  if (!el || el.dataset.scrollLocked !== 'true') return;
+  el.dataset.scrollLocked = 'false';
+  unlockBodyScroll();
+}
+
 // ── Review systeem ────────────────────────────
 const REVIEW_CRITERIA = [
   { key: 'kwaliteit',       label: 'Kwaliteit van het werk' },
@@ -2147,8 +2173,9 @@ function openReviewModal(context) {
   document.getElementById('reviewTotalScore').textContent = '—';
   document.getElementById('review-form-body').style.display = 'block';
   document.getElementById('review-success-body').style.display = 'none';
-  document.getElementById('reviewOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  const overlay = document.getElementById('reviewOverlay');
+  overlay.classList.add('open');
+  markOverlayOpen(overlay);
 }
 function setStarRating(key, val) {
   _reviewScores[key] = val;
@@ -2164,8 +2191,10 @@ function setStarRating(key, val) {
 }
 function closeReviewModal() {
   const o = document.getElementById('reviewOverlay');
-  if (o) o.classList.remove('open');
-  document.body.style.overflow = '';
+  if (o) {
+    o.classList.remove('open');
+    markOverlayClosed(o);
+  }
 }
 async function submitReview() {
   if (!_reviewContext) return;
@@ -2195,15 +2224,17 @@ async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aan
   if (!sb) { showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen! (demo)'); return; }
   const { error } = await sb.rpc('beheer_update_aanbieding', { p_klus_id: klusId, p_token: token, p_aanbieding_id: aanbiedingId, p_status: 'geaccepteerd' });
   if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Fout: ' + error.message, true); return; }
-  await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gekozen' });
+  const { error: statusErr } = await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gekozen' });
+  if (statusErr) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klusstatus bijwerken mislukt: ' + statusErr.message, true); return; }
   showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen!');
   openKlantBeheer(klusId, token);
   setTimeout(() => openReviewModal({ klusId, aannemerId, aannemerNaam, reviewerType: 'klant' }), 2000);
 }
 
 function openGeplaatsteKlussen() {
-  document.getElementById('geplaatsteKlussenOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  const overlay = document.getElementById('geplaatsteKlussenOverlay');
+  overlay.classList.add('open');
+  markOverlayOpen(overlay);
   const klussen = readGeplaatsteKlussen();
   
   const body = document.getElementById('gk-body');
@@ -2226,7 +2257,7 @@ function openGeplaatsteKlussen() {
         </div>
         <div class="mkp-meta" style="margin-top:8px">Geplaatst op ${datum}</div>
         <div class="mkp-btns">
-          <button class="mkp-btn" style="background:var(--blue-light);color:white;border-color:var(--blue-light)" onclick="closeGeplaatsteKlussen(); openKlantBeheer('${k.id}', '${k.token}')">Beheren & Aanbiedingen zien →</button>
+          <button class="mkp-btn" style="background:var(--blue-light);color:white;border-color:var(--blue-light)" onclick="closeGeplaatsteKlussen(); openSavedKlusFromList('${k.id}', '${k.token}')">Beheren & Aanbiedingen zien →</button>
         </div>
       </div>`;
     }).join('');
@@ -2235,13 +2266,15 @@ function openGeplaatsteKlussen() {
 }
 
 function closeGeplaatsteKlussen() {
-  document.getElementById('geplaatsteKlussenOverlay').classList.remove('open');
-  document.body.style.overflow = '';
+  const overlay = document.getElementById('geplaatsteKlussenOverlay');
+  overlay.classList.remove('open');
+  markOverlayClosed(overlay);
 }
 
 function closeKlantBeheer() {
-  document.getElementById('klantBeheerOverlay').classList.remove('open');
-  document.body.style.overflow = '';
+  const overlay = document.getElementById('klantBeheerOverlay');
+  overlay.classList.remove('open');
+  markOverlayClosed(overlay);
 }
 
 function readGeplaatsteKlussen() {
@@ -2259,9 +2292,25 @@ function rememberGeplaatsteKlus(klus) {
   localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen.slice(0, 25)));
 }
 
+function removeGeplaatsteKlus(id) {
+  const klussen = readGeplaatsteKlussen().filter(k => k.id !== id);
+  localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
+}
+
+async function openSavedKlusFromList(id, token) {
+  const opened = await openKlantBeheer(id, token);
+  if (opened) return;
+  if (confirm('Deze opgeslagen beheer-link lijkt niet meer geldig. Wil je deze uit "Mijn Geplaatste Klussen" verwijderen?')) {
+    removeGeplaatsteKlus(id);
+    closeKlantBeheer();
+    openGeplaatsteKlussen();
+  }
+}
+
 async function openKlantBeheer(klusId, token) {
-  document.getElementById('klantBeheerOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  const overlay = document.getElementById('klantBeheerOverlay');
+  overlay.classList.add('open');
+  markOverlayOpen(overlay);
   const body = document.getElementById('kb-body');
   body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><div class="spinner spinner-dark" style="width:24px;height:24px;border-width:2px;margin-bottom:8px"></div></div><div style="font-size:15px;font-weight:600">Klus & Aanbiedingen laden…</div></div>';
 
@@ -3435,7 +3484,7 @@ function updateNavFoto() {
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;">
         <button onclick="closeBevestiging();showPage('klussen');switchP('klussen');" style="width:100%;padding:15px;background:#0B1F4A;color:#fff;border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:19px;cursor:pointer;">Bekijk openstaande klussen →</button>
-        <button id="bev-beheer-btn" onclick="closeBevestiging();openKlantBeheerFromBev();" style="width:100%;padding:13px;background:transparent;color:#0B1F4A;border:1.5px solid #E4E9F2;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;">Beheer mijn klus direct →</button>
+        <button id="bev-beheer-btn" onclick="closeBevestiging(true);openKlantBeheerFromBev();" style="width:100%;padding:13px;background:transparent;color:#0B1F4A;border:1.5px solid #E4E9F2;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;">Beheer mijn klus direct →</button>
       </div>
       <div style="text-align:center;margin-top:18px;padding-top:18px;border-top:1px solid #E4E9F2;">
         <span style="font-size:13px;color:#5A6480;">Wat gebeurt er nu? </span>
@@ -3613,3 +3662,4 @@ function updateNavFoto() {
 
 </body>
 </html>
+

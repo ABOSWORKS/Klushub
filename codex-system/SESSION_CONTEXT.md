@@ -72,6 +72,9 @@ Committed on Codex branch:
 - Confirmation modal close/open state hardened
 - Stored placed-job entries are now sanitized, deduplicated, and capped
 - Magic-link and publish success flow now share the same safer local storage helper
+- Aannemer accept flow now checks both backend steps before success UI
+- Main customer overlays now use counted scroll-lock helpers in the core stacked flows
+- Saved beheer links now have a cleanup path when a stored entry is no longer valid
 
 ## Active Priorities
 
@@ -93,5 +96,6 @@ Committed on Codex branch:
 - Update this file after meaningful decisions, new installed skills, important fixes, branch/workflow changes, or new priorities
 - Do not rewrite the whole file for tiny conversational turns
 - Keep it concise and practical so future sessions can read it fast
+
 
 
