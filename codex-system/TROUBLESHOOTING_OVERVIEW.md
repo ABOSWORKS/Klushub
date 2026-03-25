@@ -73,3 +73,15 @@ Additional fixes in this round:
 - The FAQ white screen was caused by a missing closing </div> in the mijnKlussenOverlay markup
 - Because that overlay container was left open, #page-faq and the sections after it were parsed inside the overlay instead of as normal body-level pages
 - Added the missing closing tag so #page-faq is once again a direct body child and the FAQ page can render as a normal page
+
+
+## Profile + Regio + Postcode Round
+
+Additional fixes in this round:
+
+- fixed Profiel bewerken not opening by removing recursive override behavior (openEditProfile now safely calls openEditProfileBase)
+- hardened aannemer loading by splitting aannemers and reviews fetches, then aggregating reviews client-side
+- fixed aannemer regio filtering fallback by restoring city-coordinate lookup via getStadCoords(...)
+- cleared stale aannemer regio state when geocoding fails (reset lat/lng, hide radius UI, re-apply filters)
+- improved klus regio filtering to also use city-coordinate fallback when klus coordinates are missing
+- added postcode normalization (5705Cl -> 5705 CL) and postcode->stad autofill flow for the full klus form

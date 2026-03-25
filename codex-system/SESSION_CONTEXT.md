@@ -101,3 +101,4 @@ Committed on Codex branch:
 
 - Fixed FAQ white screen on 2026-03-25 by restoring a missing closing </div> for mijnKlussenOverlay; this moved #page-faq back to a normal body-level page instead of being nested inside the overlay
 - Updated local Codex config on 2026-03-25 to trust the Codex workspace, use workspace-write sandboxing with that workspace as writable root, enable web search, and reduce approvals to on-failure; also added allow-rules for common git actions in the Codex workspace (`status`, `add`, `commit`, `diff`, `rev-parse`, `log`, `push`)
+- 2026-03-25: Fixed profile-edit recursion bug, made aannemer loading resilient (separate reviews fetch), repaired aannemer/klussen regio fallback filtering via city coords, and added postcode normalization + city autofill for full klus form.

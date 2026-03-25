@@ -1441,8 +1441,11 @@ function applyFilters() {
   // 4. Regio (postcode + radius)
   if (filterState.lat !== null && filterState.lng !== null) {
     lijst = lijst.filter(k => {
-      if (!k.lat || !k.lng) return true; // zonder coördinaten altijd tonen
-      const d = haversineKm(filterState.lat, filterState.lng, k.lat, k.lng);
+      let target = null;
+      if (k.lat && k.lng) target = { lat: k.lat, lng: k.lng };
+      else if (k.stad) target = getStadCoords(k.stad);
+      if (!target) return true;
+      const d = haversineKm(filterState.lat, filterState.lng, target.lat, target.lng);
       return d <= filterState.radius;
     });
   }
@@ -1619,7 +1622,9 @@ function setQuickCity(city) {
 }
 
 function onRegioPcInput() {
-  const val = document.getElementById('regio-postcode').value.trim();
+  const inputEl = document.getElementById('regio-postcode');
+  const val = normalizePostcodeInput(inputEl.value || '');
+  inputEl.value = val;
   filterState.postcode = val;
   clearTimeout(geocodeTimer);
 
@@ -1637,18 +1642,20 @@ function onRegioPcInput() {
 }
 
 async function fetchCoordsForPostcode(pc) {
-  const clean = pc.trim();
+  const clean = normalizePostcodeInput(pc);
   const cacheKey = clean.toLowerCase();
   if (geocodeCache[cacheKey]) return geocodeCache[cacheKey];
   try {
     const isPostcode = /^[1-9][0-9]{3}\s?[a-zA-Z]{0,2}$/.test(clean);
     const apiQuery = isPostcode ? `postalcode=${encodeURIComponent(clean.replace(/\s/g,''))}` : `q=${encodeURIComponent(clean)}`;
-    const url = `https://nominatim.openstreetmap.org/search?${apiQuery}&countrycodes=nl&format=json&limit=1`;
+    const url = `https://nominatim.openstreetmap.org/search?${apiQuery}&countrycodes=nl&format=json&addressdetails=1&limit=1`;
     const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
     const data = await res.json();
     if (data && data[0]) {
-      const weergaveNaam = isPostcode ? data[0].display_name.split(',')[0] : (clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase());
-      const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), naam: weergaveNaam };
+      const addr = data[0].address || {};
+      const cityName = addr.city || addr.town || addr.village || addr.municipality || '';
+      const weergaveNaam = cityName || (isPostcode ? clean : (clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase()));
+      const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), naam: weergaveNaam, city: cityName };
       geocodeCache[cacheKey] = coords;
       return coords;
     }
@@ -1663,6 +1670,9 @@ async function geocodePostcode(pc) {
   } else {
     document.getElementById('regio-geocode-status').textContent = '⚠️ Locatie niet gevonden. Spelfoutje?';
     filterState.lat = null; filterState.lng = null;
+    document.getElementById('regio-radius-wrap').style.display = 'none';
+    document.getElementById('regio-no-pc-msg').style.display = 'block';
+    applyFilters();
   }
 }
 
@@ -1693,6 +1703,76 @@ function updateRadiusPreview() {
 }
 
 // ── Haversine afstandsberekening ───────────────
+function normalizePostcodeInput(value='') {
+  const clean = String(value).trim().toUpperCase().replace(/\s+/g,'');
+  const m = clean.match(/^([1-9][0-9]{3})([A-Z]{2})$/);
+  return m ? `${m[1]} ${m[2]}` : clean;
+}
+
+const STAD_COORDS = {
+  amsterdam: { lat: 52.3676, lng: 4.9041 },
+  rotterdam: { lat: 51.9244, lng: 4.4777 },
+  utrecht: { lat: 52.0907, lng: 5.1214 },
+  "den haag": { lat: 52.0705, lng: 4.3007 },
+  "'s-gravenhage": { lat: 52.0705, lng: 4.3007 },
+  haarlem: { lat: 52.3873, lng: 4.6462 },
+  eindhoven: { lat: 51.4416, lng: 5.4697 },
+  helmond: { lat: 51.4817, lng: 5.6611 },
+  groningen: { lat: 53.2194, lng: 6.5665 },
+  breda: { lat: 51.5719, lng: 4.7683 },
+  tilburg: { lat: 51.5555, lng: 5.0913 },
+  nijmegen: { lat: 51.8126, lng: 5.8372 },
+  arnhem: { lat: 51.9851, lng: 5.8987 },
+  maastricht: { lat: 50.8514, lng: 5.6900 },
+  zwolle: { lat: 52.5168, lng: 6.0830 }
+};
+
+function getStadCoords(stad='') {
+  const key = String(stad).trim().toLowerCase();
+  if (!key) return null;
+  return STAD_COORDS[key] || null;
+}
+
+let klusPostcodeTimer = null;
+async function autofillCityFromPostcode(postcode, cityInputId) {
+  const normalized = normalizePostcodeInput(postcode);
+  if (!/^[1-9][0-9]{3}\s?[A-Z]{2}$/.test(normalized)) return;
+  const cityInput = document.getElementById(cityInputId);
+  if (!cityInput) return;
+  const coords = await fetchCoordsForPostcode(normalized);
+  if (coords && coords.city) cityInput.value = coords.city;
+}
+
+function onKlusPostcodeInput(postcodeInputId, cityInputId) {
+  const pcInput = document.getElementById(postcodeInputId);
+  if (!pcInput) return;
+  const raw = pcInput.value || '';
+  clearTimeout(klusPostcodeTimer);
+  klusPostcodeTimer = setTimeout(async () => {
+    pcInput.value = normalizePostcodeInput(raw);
+    await autofillCityFromPostcode(pcInput.value, cityInputId);
+  }, 500);
+}
+
+function initKlusPostcodeAutofill() {
+  const fullPc = document.getElementById('full-postcode');
+  if (fullPc && fullPc.dataset.autoCityBound !== 'true') {
+    fullPc.dataset.autoCityBound = 'true';
+    fullPc.addEventListener('input', () => onKlusPostcodeInput('full-postcode', 'full-stad'));
+    fullPc.addEventListener('blur', async () => {
+      fullPc.value = normalizePostcodeInput(fullPc.value || '');
+      await autofillCityFromPostcode(fullPc.value, 'full-stad');
+    });
+  }
+  const heroPc = document.getElementById('hf-postcode');
+  if (heroPc && heroPc.dataset.autoCityBound !== 'true') {
+    heroPc.dataset.autoCityBound = 'true';
+    heroPc.addEventListener('blur', () => {
+      heroPc.value = normalizePostcodeInput(heroPc.value || '');
+    });
+  }
+}
+
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -1849,7 +1929,9 @@ async function loadStats() {
 // ══════════════════════════════════════════════════
 async function submitHeroForm() {
   const omschrijving = document.getElementById('hf-omschrijving').value.trim();
-  const postcode     = document.getElementById('hf-postcode').value.trim();
+  const postcodeInput= document.getElementById('hf-postcode').value.trim();
+  const postcode     = normalizePostcodeInput(postcodeInput);
+  document.getElementById('hf-postcode').value = postcode;
   const email        = document.getElementById('hf-email').value.trim();
   const budgetRaw    = document.getElementById('hf-budget').value.replace(/[^0-9]/g,'');
   const icon = '<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>';
@@ -1873,7 +1955,9 @@ async function submitHeroForm() {
 
 async function submitFullForm() {
   const omschrijving = document.getElementById('full-omschrijving').value.trim();
-  const postcode     = document.getElementById('full-postcode').value.trim();
+  const postcodeInput= document.getElementById('full-postcode').value.trim();
+  const postcode     = normalizePostcodeInput(postcodeInput);
+  document.getElementById('full-postcode').value = postcode;
   const email        = document.getElementById('full-email').value.trim();
   const fname        = document.getElementById('full-fname').value.trim();
   const lname        = document.getElementById('full-lname').value.trim();
@@ -1894,6 +1978,9 @@ async function submitFullForm() {
 
   if (errors.length > 1) { showToast(icon + 'Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
   if (errors.length === 1) { showToast(icon + errors[0] + ' is niet correct ingevuld', true); return; }
+  if (!document.getElementById('full-stad').value.trim()) {
+    await autofillCityFromPostcode(postcode, 'full-stad');
+  }
   const selectedType = [...document.querySelectorAll('#full-chips .chip.on')].map(c => c.textContent.trim()).join(', ');
   
   const btn = document.getElementById('full-btn');
@@ -2512,7 +2599,7 @@ async function saveEditKlus() {
 }
 
 // ── Edit Profile ──────────────────────────────────
-function openEditProfile() {
+function openEditProfileBase() {
   if (!currentUser) return;
   document.getElementById('ep-fname').value = currentUser.voornaam || '';
   document.getElementById('ep-lname').value = currentUser.achternaam || '';
@@ -2532,7 +2619,7 @@ function closeEditProfile() {
   document.body.style.overflow = '';
 }
 
-async function saveEditProfile() {
+async function saveEditProfileBase() {
   if (!sb) { showToast('Demo modus: werkt met echte Supabase'); return; }
   
   const fname = document.getElementById('ep-fname').value.trim();
@@ -2790,16 +2877,26 @@ async function loadAannemers() {
   if (!sb) { renderDemoAannemers(); return; }
   const { data, error } = await sb
     .from('aannemers')
-    .select('*, reviews(score_kwaliteit,score_communicatie,score_prijs_kwaliteit,score_tijdigheid,score_netheid,tekst,aangemaakt)')
+    .select('*')
     .order('aangemaakt', { ascending: false });
   if (error) { showToast('Aannemers laden mislukt', true); renderDemoAannemers(); return; }
+  const { data: reviewsData, error: reviewsError } = await sb
+    .from('reviews')
+    .select('aannemer_id,score_kwaliteit,score_communicatie,score_prijs_kwaliteit,score_tijdigheid,score_netheid,tekst,aangemaakt');
+  if (reviewsError) console.warn('Reviews laden voor aannemers mislukt:', reviewsError);
+  const reviewsByAannemer = {};
+  (reviewsData || []).forEach(r => {
+    if (!r || !r.aannemer_id) return;
+    if (!reviewsByAannemer[r.aannemer_id]) reviewsByAannemer[r.aannemer_id] = [];
+    reviewsByAannemer[r.aannemer_id].push(r);
+  });
   // Bereken gemiddelden per aannemer
   allAannemers = (data || []).map(a => {
-    const revs = a.reviews || [];
+    const revs = reviewsByAannemer[a.id] || [];
     if (revs.length === 0) return { ...a, avg: 0, avg_kwaliteit: 0, avg_communicatie: 0, avg_prijs_kwaliteit: 0, avg_tijdigheid: 0, avg_netheid: 0, review_count: 0 };
     const avg = k => revs.reduce((s,r) => s + (r[k]||0), 0) / revs.length;
     const totaal = (avg('score_kwaliteit') + avg('score_communicatie') + avg('score_prijs_kwaliteit') + avg('score_tijdigheid') + avg('score_netheid')) / 5;
-    return { ...a, avg: totaal, avg_kwaliteit: avg('score_kwaliteit'), avg_communicatie: avg('score_communicatie'), avg_prijs_kwaliteit: avg('score_prijs_kwaliteit'), avg_tijdigheid: avg('score_tijdigheid'), avg_netheid: avg('score_netheid'), review_count: revs.length };
+    return { ...a, reviews: revs, avg: totaal, avg_kwaliteit: avg('score_kwaliteit'), avg_communicatie: avg('score_communicatie'), avg_prijs_kwaliteit: avg('score_prijs_kwaliteit'), avg_tijdigheid: avg('score_tijdigheid'), avg_netheid: avg('score_netheid'), review_count: revs.length };
   });
   // Stats
   const totalRevs = allAannemers.reduce((s,a) => s + a.review_count, 0);
@@ -3098,7 +3195,10 @@ function onAnRegioInput() {
       document.getElementById('an-radius-wrap').style.display = 'block';
       applyAnFilters();
     } else {
+      anFilterState.lat = null; anFilterState.lng = null;
+      document.getElementById('an-radius-wrap').style.display = 'none';
       document.getElementById('an-regio-status').textContent = '⚠️ Niet gevonden';
+      applyAnFilters();
     }
   }, 700);
 }
@@ -3186,11 +3286,10 @@ async function uploadFotoToSupabase(file, userId) {
 }
 
 // Override openEditProfile to show current foto
-const _origOpenEditProfile = openEditProfile;
 function openEditProfile() {
   _fotoFile = null;
   _fotoRemoved = false;
-  _origOpenEditProfile();
+  openEditProfileBase();
   // Toon huidige foto of initialen
   const prev = document.getElementById('ep-foto-preview');
   const removeBtn = document.getElementById('ep-foto-remove');
@@ -3209,7 +3308,6 @@ function openEditProfile() {
 }
 
 // Override saveEditProfile to handle foto
-const _origSaveEditProfile = saveEditProfile;
 async function saveEditProfile() {
   if (!sb) { showToast('Demo modus'); return; }
   const fname = document.getElementById('ep-fname').value.trim();
@@ -3298,6 +3396,7 @@ function updateNavFoto() {
   await initAuth();
   await loadStats();
   initReveal();
+  initKlusPostcodeAutofill();
   updateNavAuth();
   if (!ok) renderDemoKlussen();
   if (window.lucide) lucide.createIcons();
