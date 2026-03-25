@@ -1,0 +1,46 @@
+# Troubleshooting Overview
+
+Last updated: 2026-03-25
+
+## Goal
+
+Create a more stable baseline for Klushub by finding and fixing navigation and page-state bugs in the Codex workspace.
+
+## This Round
+
+### User-reported issues investigated
+
+- FAQ page does not work correctly
+- Aannemer page does not work correctly
+
+### Agent findings
+
+Bug Explorer confirmed:
+
+- `showPage()` did not trigger `loadAannemers()`
+- FAQ had duplicate `faq-aannemer-stappenplan` ids
+- FAQ deep link for aannemer stappenplan targeted the wrong tab index
+- `openAannemerProfiel()` could open a blank overlay for invalid ids
+
+QA focus confirmed:
+
+- FAQ tab routing needed cleanup
+- Aannemer page needed real loading on route open
+- Mobile navigation needed a reachable path to FAQ and aannemers under 640px
+
+## Fixes Applied In Codex Workspace
+
+- `showPage('aannemers')` now triggers `loadAannemers()`
+- `showPage()` now handles missing page ids more safely
+- duplicate `faq-aannemer-stappenplan` section removed
+- FAQ link in aannemer FAQ now points to the correct tab index for aannemer stappenplan
+- `openAannemerProfiel()` now validates the aannemer before opening the overlay
+- quick city chips on aannemer filters now pass `this` explicitly instead of relying on global `event`
+- mobile nav under 640px now keeps primary nav links reachable instead of hiding them entirely
+
+## Remaining Follow-up
+
+- run interactive QA on FAQ tab switching and aannemer filters/cards
+- verify mobile nav layout still looks acceptable on small screens
+- review confirmation modal state handling next
+- continue phase 1 bug backlog in `codex-system/PHASE1_BUG_BACKLOG.md`

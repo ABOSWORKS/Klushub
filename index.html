@@ -560,7 +560,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 
 /* ── RESPONSIVE ──────────────────────────────── */
 @media(max-width:960px){.sidebar,.kh-stats{display:none}.hero{grid-template-columns:1fr;padding:100px 5vw 60px;gap:36px}.score-sec{grid-template-columns:1fr;gap:40px}.price-grid{grid-template-columns:1fr}.foot-top{grid-template-columns:1fr 1fr}.place-full{padding:28px 24px}.perks{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:640px){.nav-links{display:none}.foot-top{grid-template-columns:1fr}.foot-bot{flex-direction:column;gap:8px;text-align:center}.kbody{padding:14px 4vw 40px}.klus-card{padding:18px}.ptab{padding:0 18px}.ptab-sub{display:none}.perks{grid-template-columns:1fr}.place-full{margin:16px}.pr2,.hf-row-2,.form-row-2,.arow2{grid-template-columns:1fr}.auth-body{padding:20px}.bev-body{padding:20px 18px}.bev-top{padding:28px 18px 22px}.faq-content{padding:28px 4vw 60px}.review-body{padding:18px}.review-row{flex-direction:column;align-items:flex-start;gap:6px}}
+@media(max-width:640px){nav{flex-wrap:wrap;height:auto;padding:10px 4vw;gap:10px}.nav-links{display:flex;order:3;width:100%;gap:14px;overflow-x:auto;padding-bottom:4px}.nav-links::-webkit-scrollbar{display:none}.nav-right{margin-left:auto}.nav-cta-btn{display:none}.foot-top{grid-template-columns:1fr}.foot-bot{flex-direction:column;gap:8px;text-align:center}.kbody{padding:14px 4vw 40px}.klus-card{padding:18px}.ptab{padding:0 18px}.ptab-sub{display:none}.perks{grid-template-columns:1fr}.place-full{margin:16px}.pr2,.hf-row-2,.form-row-2,.arow2{grid-template-columns:1fr}.auth-body{padding:20px}.bev-body{padding:20px 18px}.bev-top{padding:28px 18px 22px}.faq-content{padding:28px 4vw 60px}.review-body{padding:18px}.review-row{flex-direction:column;align-items:flex-start;gap:6px}}
 
 </style>
 </head>
@@ -2619,10 +2619,17 @@ function closeLock() { document.getElementById('lockOverlay').classList.remove('
 // ══════════════════════════════════════════════════
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
+  const nextPage = document.getElementById('page-'+id);
+  if (!nextPage) {
+    showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Pagina niet gevonden', true);
+    return;
+  }
+  nextPage.classList.add('active');
   window.scrollTo(0,0);
   if (id==='landing') initReveal();
   if (id==='klussen') loadKlussen();
+  if (id==='aannemers') loadAannemers();
+  if (id==='faq') openFaqSection('stappenplan', document.querySelector('.faq-tab'));
 }
 function goLanding(hash) { showPage('landing'); setTimeout(() => { const el=document.querySelector(hash); if(el)el.scrollIntoView({behavior:'smooth'}); }, 80); }
 function switchP(view) {
@@ -2868,10 +2875,13 @@ function renderStarsMini(score) {
 }
 
 async function openAannemerProfiel(id) {
+  const a = allAannemers.find(x => x.id === id);
+  if (!a) {
+    showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aannemerprofiel niet gevonden', true);
+    return;
+  }
   document.getElementById('aannemerProfielOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-  const a = allAannemers.find(x => x.id === id);
-  if (!a) return;
   const ini = ((a.voornaam?.[0]||'') + (a.achternaam?.[0]||'')).toUpperCase() || '?';
   const apAv = document.getElementById('ap-avatar');
   if (a.foto_url) {
@@ -3028,10 +3038,10 @@ function onAnRegioInput() {
   }, 700);
 }
 
-function setAnQuickCity(city) {
+function setAnQuickCity(city, el) {
   document.getElementById('an-regio-input').value = city;
   document.querySelectorAll('.city-chip').forEach(c => c.classList.remove('active'));
-  event.target.classList.add('active');
+  if (el) el.classList.add('active');
   onAnRegioInput();
 }
 
@@ -3304,58 +3314,6 @@ function updateNavFoto() {
       <div class="faq-cta-box"><h3>Begin vandaag nog!</h3><p>Registreer gratis als aannemer en ontvang direct toegang tot alle openstaande klussen.</p><button class="btn-p" onclick="openAuth('register')">Gratis registreren →</button></div>
     </div>
 
-
-    <!-- AANNEMER STAPPENPLAN -->
-    <div id="faq-aannemer-stappenplan" class="faq-section">
-      <div style="background:linear-gradient(135deg,#1A3A7A,#2E5FBE);border-radius:20px;padding:36px;margin-bottom:40px;position:relative;overflow:hidden;">
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 85% 50%,rgba(245,194,0,.12) 0%,transparent 70%);pointer-events:none;"></div>
-        <div style="position:relative;z-index:1;">
-          <div style="display:inline-flex;align-items:center;gap:7px;background:rgba(245,194,0,.15);border:1px solid rgba(245,194,0,.3);border-radius:100px;padding:6px 16px;font-size:11px;font-weight:700;color:#FFD740;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:18px;"><i data-lucide="hammer" style="width:13px;height:13px;stroke:#FFD740;fill:none;margin:0;"></i> Voor aannemers</div>
-          <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:#fff;margin-bottom:10px;line-height:1.05;">Stappenplan voor<br><span style="color:#F5C200;">aannemers op Klushub</span></h2>
-          <p style="font-size:15px;color:rgba(255,255,255,.65);line-height:1.6;max-width:500px;">Van aanmelden tot klus binnenhalen — alles wat je kunt verwachten als aannemer in 6 stappen.</p>
-        </div>
-      </div>
-      <div class="stappenplan-steps">
-        <div class="sp-step"><div class="sp-step-num">1</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="user-plus" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Maak een account aan</h3>
-          <p>Registreer gratis als aannemer via de <strong>Aannemer Login</strong> knop. Vul je naam, bedrijfsnaam, e-mailadres en specialisme in. De eerste 30 dagen zijn volledig gratis — geen creditcard vereist.</p>
-          <div class="sp-tip"><span><i data-lucide="info" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Een volledig profiel met bedrijfsnaam en specialisme wekt meer vertrouwen bij klanten.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">2</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="search" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Zoek klussen in jouw regio</h3>
-          <p>Ga naar <strong>Openstaande Klussen</strong> en filter op categorie, budget en regio. Je ziet alle projecten van klanten die actief op zoek zijn naar een vakman.</p>
-          <div class="sp-tip"><span><i data-lucide="lightbulb" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Stel de regio-filter in op jouw werkgebied zodat je alleen relevante klussen ziet.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">3</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="send" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Stuur een aanbieding</h3>
-          <p>Klik op <strong>Aanbieden</strong> bij een klus die bij je past. Vul je prijs, doorlooptijd en een persoonlijk bericht in. De klant ontvangt jouw aanbieding direct in zijn beheer-panel.</p>
-          <div class="sp-tip"><span><i data-lucide="message-square" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Aanbiedingen met een persoonlijk bericht worden 3× vaker gekozen dan aanbiedingen met alleen een prijs.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">4</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="clock" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Wacht op reactie van de klant</h3>
-          <p>De klant vergelijkt alle aanbiedingen. Volg de status via <strong>Mijn aanbiedingen</strong> in het dashboard. Je ontvangt een melding zodra de klant een beslissing heeft genomen.</p>
-          <div class="sp-tip"><span><i data-lucide="info" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Stuur meerdere aanbiedingen op verschillende klussen om je kansen te vergroten.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">5</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="phone-call" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Ontvang de contactgegevens en ga aan de slag</h3>
-          <p>Wanneer de klant voor jou kiest ontvang je direct een <strong>e-mailnotificatie met de contactgegevens</strong>. Neem contact op om de klus te bespreken en een startdatum af te spreken.</p>
-          <div class="sp-tip"><span><i data-lucide="check-circle" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Neem snel contact op — klanten waarderen een snelle reactie na acceptatie.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">6</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="star" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Ontvang een review en bouw je reputatie op</h3>
-          <p>Na afronding nodigt Klushub de klant uit om jou een <strong>review te geven</strong> op vijf criteria. Goede reviews versterken je profiel en zorgen ervoor dat je vaker gekozen wordt.</p>
-          <div class="sp-tip"><span><i data-lucide="trending-up" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Aannemers met 10+ reviews worden gemiddeld 60% vaker gekozen dan aannemers zonder reviews.</span></div>
-        </div></div>
-      </div>
-      <div class="faq-cta-box"><h3>Begin vandaag nog!</h3><p>Registreer gratis en ontvang direct toegang tot alle openstaande klussen.</p><button class="btn-p" onclick="openAuth('register')">Gratis registreren →</button></div>
-    </div>
-
     <!-- KLANT FAQ -->
     <div id="faq-klant-faq" class="faq-section">
       <div style="background:linear-gradient(135deg,#0B1F4A,#1A3A7A);border-radius:20px;padding:36px;margin-bottom:40px;position:relative;overflow:hidden;">
@@ -3404,7 +3362,7 @@ function updateNavFoto() {
       <div class="faq-accordion">
 
         <div style="font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--blue-light);margin:0 0 10px 4px;">Aanmelden & account</div>
-        <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Hoe meld ik me aan als aannemer?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Klik op <strong>Aannemer Login</strong> rechtsboven en kies "Registreren". Vul je naam, bedrijfsnaam, e-mailadres, wachtwoord en specialisme in. Je account is direct actief en de eerste 30 dagen zijn volledig gratis — geen creditcard vereist. Bekijk het <a onclick="openFaqSection('aannemer-stappenplan',document.querySelectorAll('.faq-tab')[3])" style="color:#2E5FBE;font-weight:700;cursor:pointer;">stappenplan voor aannemers</a> voor een volledige uitleg.</p></div></div>
+        <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Hoe meld ik me aan als aannemer?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Klik op <strong>Aannemer Login</strong> rechtsboven en kies "Registreren". Vul je naam, bedrijfsnaam, e-mailadres, wachtwoord en specialisme in. Je account is direct actief en de eerste 30 dagen zijn volledig gratis — geen creditcard vereist. Bekijk het <a onclick="openFaqSection('aannemer-stappenplan',document.querySelectorAll('.faq-tab')[1])" style="color:#2E5FBE;font-weight:700;cursor:pointer;">stappenplan voor aannemers</a> voor een volledige uitleg.</p></div></div>
         <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Wat kost een abonnement?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Er zijn twee betaalde abonnementen: <strong>Pro Aannemer</strong> voor € 49 per maand (onbeperkt aanbiedingen, verified badge, prioriteit in zoekresultaten) en <strong>Business</strong> voor € 129 per maand (alles uit Pro + meerdere medewerkerprofielen en featured plaatsing). De eerste 30 dagen zijn altijd gratis.</p></div></div>
         <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Hoe zeg ik mijn abonnement op?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Je kunt je abonnement op elk moment opzeggen via je profielinstellingen. Na opzegging blijf je toegang houden tot het einde van je betaalde periode. Er zijn geen opzegkosten.</p></div></div>
         <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Hoe bouw ik een sterk profiel op?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Een sterk profiel heeft een complete bedrijfsnaam, duidelijk specialisme, foto's van eerder werk en zo veel mogelijk positieve reviews. Vul ook je standplaats in zodat klanten kunnen zien hoe ver jij van de klus vandaan zit. Aannemers met 10+ reviews worden gemiddeld 60% vaker gekozen.</p></div></div>
@@ -3561,10 +3519,10 @@ function updateNavFoto() {
             <div class="regio-wrap">
               <input class="form-input" id="an-regio-input" type="text" placeholder="Stad of postcode" style="font-size:13px;padding:8px 11px;" oninput="onAnRegioInput()">
               <div class="quick-cities" style="margin-top:8px;">
-                <span class="city-chip" onclick="setAnQuickCity('Amsterdam')">Amsterdam</span>
-                <span class="city-chip" onclick="setAnQuickCity('Rotterdam')">Rotterdam</span>
-                <span class="city-chip" onclick="setAnQuickCity('Utrecht')">Utrecht</span>
-                <span class="city-chip" onclick="setAnQuickCity('Den Haag')">Den Haag</span>
+                <span class="city-chip" onclick="setAnQuickCity('Amsterdam', this)">Amsterdam</span>
+                <span class="city-chip" onclick="setAnQuickCity('Rotterdam', this)">Rotterdam</span>
+                <span class="city-chip" onclick="setAnQuickCity('Utrecht', this)">Utrecht</span>
+                <span class="city-chip" onclick="setAnQuickCity('Den Haag', this)">Den Haag</span>
               </div>
               <div id="an-regio-status" style="font-size:11px;color:var(--gray-text);margin-top:6px;min-height:14px;"></div>
               <div id="an-radius-wrap" style="display:none;margin-top:10px;">

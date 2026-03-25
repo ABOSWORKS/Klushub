@@ -61,6 +61,15 @@ Committed on Codex branch:
   - `6bc02b1` Add Codex agent system and stabilize core flows
   - `fcac486` Document installed Codex skill assignments
 
+## Latest Troubleshooting Round
+
+- Investigated and fixed broken FAQ and aannemer navigation/state issues
+- Aannemer route now loads data when opened
+- Duplicate FAQ aannemer stappenplan section removed
+- FAQ aannemer deep-link now points to the correct tab
+- Aannemer profiel popup now guards against invalid ids
+- Mobile navigation now keeps core links reachable under 640px
+
 ## Active Priorities
 
 1. Stabilize core customer flow
@@ -81,3 +90,4 @@ Committed on Codex branch:
 - Update this file after meaningful decisions, new installed skills, important fixes, branch/workflow changes, or new priorities
 - Do not rewrite the whole file for tiny conversational turns
 - Keep it concise and practical so future sessions can read it fast
+
