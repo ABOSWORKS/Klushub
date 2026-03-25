@@ -69,6 +69,9 @@ Committed on Codex branch:
 - FAQ aannemer deep-link now points to the correct tab
 - Aannemer profiel popup now guards against invalid ids
 - Mobile navigation now keeps core links reachable under 640px
+- Confirmation modal close/open state hardened
+- Stored placed-job entries are now sanitized, deduplicated, and capped
+- Magic-link and publish success flow now share the same safer local storage helper
 
 ## Active Priorities
 
@@ -90,4 +93,5 @@ Committed on Codex branch:
 - Update this file after meaningful decisions, new installed skills, important fixes, branch/workflow changes, or new priorities
 - Do not rewrite the whole file for tiny conversational turns
 - Keep it concise and practical so future sessions can read it fast
+
 

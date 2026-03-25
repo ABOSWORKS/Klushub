@@ -1920,11 +1920,7 @@ async function insertKlus(payload, btnId) {
   btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>';
   if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true); }
   else if (data && data.id) {
-    // Sla op in localStorage voor apparaat-herkenning
-    let klussen = [];
-    try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
-    klussen.unshift({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
-    localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
+    rememberGeplaatsteKlus({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
     showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
   } else {
     showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus kon niet veilig worden opgeslagen. Probeer het opnieuw.', true);
@@ -2035,6 +2031,7 @@ function showKlusBevestiging(klusId, token, omschrijving) {
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
     if (overlay.parentElement !== document.body) document.body.appendChild(overlay);
+    overlay.scrollTop = 0;
     overlay.style.display = 'flex';
     overlay.style.visibility = 'visible';
     overlay.style.opacity = '1';
@@ -2058,6 +2055,9 @@ function closeBevestiging() {
     o.setAttribute('aria-hidden', 'true');
     o.style.opacity = '0';
     o.style.visibility = 'hidden';
+    setTimeout(() => {
+      if (!o.classList.contains('open')) o.style.display = 'none';
+    }, 220);
   }
   document.body.style.overflow = '';
 }
@@ -2204,8 +2204,7 @@ async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aan
 function openGeplaatsteKlussen() {
   document.getElementById('geplaatsteKlussenOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-  let klussen = [];
-  try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
+  const klussen = readGeplaatsteKlussen();
   
   const body = document.getElementById('gk-body');
   if (klussen.length === 0) {
@@ -2219,10 +2218,11 @@ function openGeplaatsteKlussen() {
   } else {
     body.innerHTML = klussen.map(k => {
       const datum = new Date(k.datum).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});
+      const titel = (k.omschrijving || 'Geplaatste klus').trim();
       return `
       <div class="mkp-klus">
         <div class="mkp-klus-top">
-          <div class="mkp-klus-title">${escHtml((k.omschrijving||'').substring(0,70))}...</div>
+          <div class="mkp-klus-title">${escHtml(titel.length > 70 ? titel.substring(0,70) + '...' : titel)}</div>
         </div>
         <div class="mkp-meta" style="margin-top:8px">Geplaatst op ${datum}</div>
         <div class="mkp-btns">
@@ -2242,6 +2242,21 @@ function closeGeplaatsteKlussen() {
 function closeKlantBeheer() {
   document.getElementById('klantBeheerOverlay').classList.remove('open');
   document.body.style.overflow = '';
+}
+
+function readGeplaatsteKlussen() {
+  let klussen = [];
+  try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
+  if (!Array.isArray(klussen)) klussen = [];
+  klussen = klussen.filter(k => k && k.id && k.token);
+  localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
+  return klussen;
+}
+
+function rememberGeplaatsteKlus(klus) {
+  const klussen = readGeplaatsteKlussen().filter(k => k.id !== klus.id);
+  klussen.unshift(klus);
+  localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen.slice(0, 25)));
 }
 
 async function openKlantBeheer(klusId, token) {
@@ -3244,12 +3259,7 @@ function updateNavFoto() {
     const tkn = urlParams.get('token');
     const opened = await openKlantBeheer(kId, tkn);
     if (opened) {
-      let klussen = [];
-      try { klussen = JSON.parse(localStorage.getItem('klushub_geplaatste_klussen')) || []; } catch(e){}
-      if (!klussen.find(k => k.id === kId)) {
-        klussen.unshift({ id: kId, token: tkn, omschrijving: 'Klus via e-mail link', datum: Date.now() });
-        localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen));
-      }
+      rememberGeplaatsteKlus({ id: kId, token: tkn, omschrijving: 'Klus via e-mail link', datum: Date.now() });
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }

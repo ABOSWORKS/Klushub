@@ -44,3 +44,15 @@ QA focus confirmed:
 - verify mobile nav layout still looks acceptable on small screens
 - review confirmation modal state handling next
 - continue phase 1 bug backlog in `codex-system/PHASE1_BUG_BACKLOG.md`
+
+## Modal And Beheer Hardening
+
+Additional fixes in this round:
+
+- added `readGeplaatsteKlussen()` to sanitize stored job entries
+- added `rememberGeplaatsteKlus()` to deduplicate and cap stored jobs
+- updated job publish success flow to reuse the safe storage helper
+- updated magic-link beheer success flow to reuse the safe storage helper
+- made confirmation modal close restore `display:none` after close transition
+- reset confirmation overlay scroll position on open
+- improved placed-jobs list rendering so missing descriptions do not render as broken `...`
