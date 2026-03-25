@@ -83,3 +83,8 @@ Every task handoff should include:
 - Relevant user journey
 - Risk notes
 - Required verification steps
+
+## Session Continuity
+
+- Read `codex-system/SESSION_CONTEXT.md` at the start of a new Codex session.
+- Update `codex-system/SESSION_CONTEXT.md` after meaningful progress so important context survives chat loss.
