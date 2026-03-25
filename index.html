@@ -558,9 +558,40 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 .review-success h3{font-size:24px;font-weight:900;color:var(--text-dark);margin-bottom:8px}
 .review-success p{font-size:14px;color:var(--gray-text);line-height:1.6}
 
+/* ── HAMBURGER MENU ─────────────────────────── */
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;color:rgba(255,255,255,.8);transition:color .2s}
+.hamburger:hover{color:var(--yellow)}
+.mobile-nav-overlay{position:fixed;inset:0;z-index:290;background:rgba(7,14,34,.92);backdrop-filter:blur(12px);opacity:0;pointer-events:none;transition:opacity .25s}
+.mobile-nav-overlay.open{opacity:1;pointer-events:all}
+.mobile-nav{position:fixed;top:0;right:0;width:min(320px,85vw);height:100vh;background:var(--blue-dark);box-shadow:-10px 0 40px rgba(0,0,0,.3);transform:translateX(100%);transition:transform .3s cubic-bezier(.34,1.12,.64,1);z-index:291;display:flex;flex-direction:column;overflow-y:auto}
+.mobile-nav-overlay.open .mobile-nav{transform:translateX(0)}
+.mobile-nav-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid rgba(255,255,255,.08)}
+.mobile-nav-hdr .logo-text{font-size:20px}
+.mobile-nav-close{background:rgba(255,255,255,.1);border:none;cursor:pointer;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7);transition:background .15s}
+.mobile-nav-close:hover{background:rgba(255,255,255,.2)}
+.mobile-nav-links{list-style:none;padding:16px 0;flex:1}
+.mobile-nav-links li{border-bottom:1px solid rgba(255,255,255,.05)}
+.mobile-nav-links a{display:flex;align-items:center;gap:12px;padding:14px 24px;color:rgba(255,255,255,.75);text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;transition:all .15s;cursor:pointer}
+.mobile-nav-links a:hover,.mobile-nav-links a:active{color:var(--yellow);background:rgba(255,255,255,.04)}
+.mobile-nav-btns{padding:16px 22px 24px;display:flex;flex-direction:column;gap:10px;border-top:1px solid rgba(255,255,255,.08)}
+
+/* ── MOBILE FILTER TOGGLE ──────────────────── */
+.mobile-filter-btn{display:none;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;border:1.5px solid var(--gray-border);background:var(--white);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:var(--text-dark);cursor:pointer;transition:all .2s}
+.mobile-filter-btn:hover{border-color:var(--blue-light);color:var(--blue-light)}
+.filter-overlay{position:fixed;inset:0;z-index:500;background:rgba(7,14,34,.6);backdrop-filter:blur(5px);opacity:0;pointer-events:none;transition:opacity .25s}
+.filter-overlay.open{opacity:1;pointer-events:all}
+.filter-drawer{position:fixed;top:0;right:0;width:min(360px,90vw);height:100vh;background:var(--white);box-shadow:-10px 0 40px rgba(0,0,0,.15);transform:translateX(100%);transition:transform .3s cubic-bezier(.34,1.12,.64,1);z-index:501;overflow-y:auto;display:flex;flex-direction:column}
+.filter-overlay.open .filter-drawer{transform:translateX(0)}
+.filter-drawer-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--gray-border);background:var(--gray-soft);flex-shrink:0}
+.filter-drawer-hdr h3{font-size:18px;font-weight:800;color:var(--text-dark)}
+.filter-drawer-close{background:var(--gray-soft);border:1.5px solid var(--gray-border);cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--gray-text);transition:all .15s}
+.filter-drawer-close:hover{border-color:var(--blue-light);color:var(--blue-light)}
+.filter-drawer-body{flex:1;overflow-y:auto;padding:18px 22px}
+.filter-drawer-footer{padding:14px 22px;border-top:1px solid var(--gray-border);display:flex;gap:10px;flex-shrink:0}
+
 /* ── RESPONSIVE ──────────────────────────────── */
-@media(max-width:960px){.sidebar,.kh-stats{display:none}.hero{grid-template-columns:1fr;padding:100px 5vw 60px;gap:36px}.score-sec{grid-template-columns:1fr;gap:40px}.price-grid{grid-template-columns:1fr}.foot-top{grid-template-columns:1fr 1fr}.place-full{padding:28px 24px}.perks{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:640px){.nav-links{display:none}.foot-top{grid-template-columns:1fr}.foot-bot{flex-direction:column;gap:8px;text-align:center}.kbody{padding:14px 4vw 40px}.klus-card{padding:18px}.ptab{padding:0 18px}.ptab-sub{display:none}.perks{grid-template-columns:1fr}.place-full{margin:16px}.pr2,.hf-row-2,.form-row-2,.arow2{grid-template-columns:1fr}.auth-body{padding:20px}.bev-body{padding:20px 18px}.bev-top{padding:28px 18px 22px}.faq-content{padding:28px 4vw 60px}.review-body{padding:18px}.review-row{flex-direction:column;align-items:flex-start;gap:6px}}
+@media(max-width:960px){.sidebar,.kh-stats{display:none}.hero{grid-template-columns:1fr;padding:100px 5vw 60px;gap:36px}.score-sec{grid-template-columns:1fr;gap:40px}.price-grid{grid-template-columns:1fr}.foot-top{grid-template-columns:1fr 1fr}.place-full{padding:28px 24px}.perks{grid-template-columns:repeat(3,1fr)}.mobile-filter-btn{display:flex}}
+@media(max-width:640px){.nav-links{display:none}.hamburger{display:block}.foot-top{grid-template-columns:1fr}.foot-bot{flex-direction:column;gap:8px;text-align:center}.kbody{padding:14px 4vw 40px}.klus-card{padding:18px}.ptab{padding:0 18px}.ptab-sub{display:none}.perks{grid-template-columns:1fr}.place-full{margin:16px}.pr2,.hf-row-2,.form-row-2,.arow2{grid-template-columns:1fr}.auth-body{padding:20px}.bev-body{padding:20px 18px}.bev-top{padding:28px 18px 22px}.faq-content{padding:28px 4vw 60px}.review-body{padding:18px}.review-row{flex-direction:column;align-items:flex-start;gap:6px}.faq-tabs-bar{overflow-x:auto;-webkit-overflow-scrolling:touch}.faq-tab{padding:14px 16px;font-size:13px}}
 
 </style>
 </head>
@@ -588,6 +619,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
     <li><a onclick="showPage('faq')">FAQ &amp; Handleidingen</a></li>
   </ul>
   <div class="nav-right">
+    <button class="hamburger" onclick="openMobileNav()" aria-label="Menu openen"><i data-lucide="menu" style="width:24px;height:24px;margin:0"></i></button>
     <div id="nav-guest" style="display:flex;gap:8px;align-items:center">
       <button class="nav-login" style="background:none;border:none;color:var(--text-dark);font-family:'Nunito',sans-serif;font-weight:700;font-size:14px;cursor:pointer;padding:10px 14px;" onclick="openGeplaatsteKlussen()">Mijn Geplaatste Klussen</button>
       <button class="nav-login" onclick="openAuth('login')">Aannemer Login</button>
@@ -618,6 +650,48 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
     </div>
   </div>
 </nav>
+
+<!-- ══ MOBILE NAV ═══════════════════════════════════════ -->
+<div class="mobile-nav-overlay" id="mobileNavOverlay" onclick="if(event.target===this)closeMobileNav()">
+  <div class="mobile-nav">
+    <div class="mobile-nav-hdr">
+      <div class="logo" onclick="closeMobileNav();showPage('landing')">
+        <div class="logo-icon">K</div>
+        <span class="logo-text">Klus<span>hub</span></span>
+      </div>
+      <button class="mobile-nav-close" onclick="closeMobileNav()" aria-label="Menu sluiten"><i data-lucide="x" style="width:20px;height:20px;margin:0"></i></button>
+    </div>
+    <ul class="mobile-nav-links">
+      <li><a onclick="closeMobileNav();goLanding('#hoe')"><i data-lucide="help-circle" style="width:18px;height:18px;margin:0"></i> Hoe werkt het</a></li>
+      <li><a onclick="closeMobileNav();showPage('klussen');switchP('klussen')"><i data-lucide="search" style="width:18px;height:18px;margin:0"></i> Openstaande klussen</a></li>
+      <li><a onclick="closeMobileNav();showPage('aannemers')"><i data-lucide="users" style="width:18px;height:18px;margin:0"></i> Aannemers</a></li>
+      <li><a onclick="closeMobileNav();goLanding('#reviews')"><i data-lucide="star" style="width:18px;height:18px;margin:0"></i> Reviews</a></li>
+      <li><a onclick="closeMobileNav();goLanding('#prijzen')"><i data-lucide="credit-card" style="width:18px;height:18px;margin:0"></i> Prijzen</a></li>
+      <li><a onclick="closeMobileNav();showPage('faq')"><i data-lucide="book-open" style="width:18px;height:18px;margin:0"></i> FAQ &amp; Handleidingen</a></li>
+    </ul>
+    <div class="mobile-nav-btns">
+      <button class="nav-cta-btn" style="width:100%;text-align:center;padding:12px" onclick="closeMobileNav();goLanding('#hero-top')">Klus plaatsen</button>
+      <button class="nav-login" style="width:100%;text-align:center;padding:10px;border:1.5px solid rgba(255,255,255,.2);border-radius:8px;color:rgba(255,255,255,.75)" onclick="closeMobileNav();openAuth('login')">Aannemer Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FILTER DRAWER (mobiel) ══════════════════════════ -->
+<div class="filter-overlay" id="filterDrawerOverlay" onclick="if(event.target===this)closeFilterDrawer()">
+  <div class="filter-drawer">
+    <div class="filter-drawer-hdr">
+      <h3><i data-lucide="sliders-horizontal" style="width:18px;height:18px;vertical-align:-3px;margin-right:6px;color:var(--blue-light)"></i>Filters</h3>
+      <button class="filter-drawer-close" onclick="closeFilterDrawer()" aria-label="Filters sluiten"><i data-lucide="x" style="width:18px;height:18px;margin:0"></i></button>
+    </div>
+    <div class="filter-drawer-body" id="filterDrawerBody">
+      <!-- Wordt dynamisch gevuld door JS -->
+    </div>
+    <div class="filter-drawer-footer">
+      <button class="btn-p" style="flex:1;font-size:15px;padding:11px" onclick="closeFilterDrawer()">Resultaten bekijken</button>
+      <button style="padding:11px 16px;border-radius:10px;border:1.5px solid var(--gray-border);background:var(--white);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:var(--gray-text);cursor:pointer" onclick="resetFilters();closeFilterDrawer()">Wissen</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════════════════
      LANDING PAGE
@@ -898,6 +972,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
         <option value="budget_laag">Budget: laag → hoog</option>
         <option value="deadline">Deadline: snel eerst</option>
       </select>
+      <button class="mobile-filter-btn" onclick="openFilterDrawer('klussen')"><i data-lucide="sliders-horizontal" style="width:16px;height:16px;margin:0"></i> Filters</button>
       <div class="tb-right">
         <span class="res-ct"><strong id="visCt">—</strong> klussen</span>
         <button class="vbtn active" onclick="setView('list',this)">☰</button>
@@ -1689,6 +1764,49 @@ function updateRadiusPreview() {
   const cnt = filteredKlussen.length;
   document.getElementById('regio-preview').textContent =
     `Zoekgebied: ${r} km rondom ${pc} — ${cnt} klus${cnt !== 1 ? 'sen' : ''} gevonden`;
+}
+
+// ── Stad → coördinaten lookup ──────────────────
+function getStadCoords(stad) {
+  if (!stad) return null;
+  const s = stad.toLowerCase().trim();
+  const steden = {
+    'amsterdam':  { lat: 52.3676, lng: 4.9041 },
+    'rotterdam':  { lat: 51.9244, lng: 4.4777 },
+    'den haag':   { lat: 52.0705, lng: 4.3007 },
+    'utrecht':    { lat: 52.0907, lng: 5.1214 },
+    'eindhoven':  { lat: 51.4416, lng: 5.4697 },
+    'groningen':  { lat: 53.2194, lng: 6.5665 },
+    'tilburg':    { lat: 51.5555, lng: 5.0913 },
+    'almere':     { lat: 52.3508, lng: 5.2647 },
+    'breda':      { lat: 51.5719, lng: 4.7683 },
+    'nijmegen':   { lat: 51.8126, lng: 5.8372 },
+    'haarlem':    { lat: 52.3873, lng: 4.6462 },
+    'arnhem':     { lat: 51.9851, lng: 5.8987 },
+    'enschede':   { lat: 52.2215, lng: 6.8937 },
+    'apeldoorn':  { lat: 52.2112, lng: 5.9699 },
+    'amersfoort': { lat: 52.1561, lng: 5.3878 },
+    'zaanstad':   { lat: 52.4496, lng: 4.8131 },
+    'zwolle':     { lat: 52.5168, lng: 6.0830 },
+    'haarlemmermeer': { lat: 52.3025, lng: 4.6914 },
+    'den bosch':  { lat: 51.6978, lng: 5.3037 },
+    "'s-hertogenbosch": { lat: 51.6978, lng: 5.3037 },
+    'leiden':     { lat: 52.1601, lng: 4.4970 },
+    'maastricht': { lat: 50.8514, lng: 5.6910 },
+    'dordrecht':  { lat: 51.8133, lng: 4.6901 },
+    'zoetermeer': { lat: 52.0575, lng: 4.4931 },
+    'delft':      { lat: 52.0116, lng: 4.3571 },
+    'deventer':   { lat: 52.2553, lng: 6.1631 },
+    'leeuwarden': { lat: 53.2012, lng: 5.7999 },
+    'hilversum':  { lat: 52.2292, lng: 5.1669 },
+  };
+  // Exacte match
+  if (steden[s]) return steden[s];
+  // Bevat-match (bijv. "Amsterdam & Omstreken")
+  for (const [naam, coords] of Object.entries(steden)) {
+    if (s.includes(naam) || naam.includes(s)) return coords;
+  }
+  return null;
 }
 
 // ── Haversine afstandsberekening ───────────────
@@ -2551,6 +2669,54 @@ async function submitAanbieding() {
 }
 
 // ══════════════════════════════════════════════════
+// 9B. MOBILE NAV & FILTER DRAWER
+// ══════════════════════════════════════════════════
+function openMobileNav() {
+  document.getElementById('mobileNavOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+function closeMobileNav() {
+  document.getElementById('mobileNavOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function openFilterDrawer(page) {
+  const body = document.getElementById('filterDrawerBody');
+  body.innerHTML = '';
+  // Clone the sidebar from the active page
+  let sidebar;
+  if (page === 'aannemers') {
+    sidebar = document.querySelector('#page-aannemers .sidebar .fcard .fbody');
+  } else {
+    sidebar = document.querySelector('#v-klussen .sidebar .fcard .fbody');
+  }
+  if (sidebar) {
+    const clone = sidebar.cloneNode(true);
+    // Sync checkbox states from original to clone
+    const origInputs = sidebar.querySelectorAll('input');
+    const cloneInputs = clone.querySelectorAll('input');
+    origInputs.forEach((inp, i) => {
+      if (cloneInputs[i]) {
+        if (inp.type === 'checkbox' || inp.type === 'radio') cloneInputs[i].checked = inp.checked;
+        else cloneInputs[i].value = inp.value;
+      }
+    });
+    // Sync select states
+    const origSelects = sidebar.querySelectorAll('select');
+    const cloneSelects = clone.querySelectorAll('select');
+    origSelects.forEach((sel, i) => { if (cloneSelects[i]) cloneSelects[i].value = sel.value; });
+    body.appendChild(clone);
+  }
+  document.getElementById('filterDrawerOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+function closeFilterDrawer() {
+  document.getElementById('filterDrawerOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ══════════════════════════════════════════════════
 // 10. AUTH MODALS
 // ══════════════════════════════════════════════════
 function openAuth(tab) { document.getElementById('authOverlay').classList.add('open'); document.body.style.overflow = 'hidden'; switchAuthTab(tab||'login'); }
@@ -2670,7 +2836,7 @@ function timeSince(iso){
 // 14. KEYBOARD + INIT
 // ══════════════════════════════════════════════════
 document.addEventListener('keydown', e => {
-  if (e.key==='Escape') { closeModal(); closeAuth(); closeLock(); closeMijnKlussen(); closeEditKlus(); closeDropdown(); closeGeplaatsteKlussen(); closeKlantBeheer(); closeBevestiging(); closeReviewModal(); closeAannemerProfiel(); }
+  if (e.key==='Escape') { closeModal(); closeAuth(); closeLock(); closeMijnKlussen(); closeEditKlus(); closeDropdown(); closeGeplaatsteKlussen(); closeKlantBeheer(); closeBevestiging(); closeReviewModal(); closeAannemerProfiel(); closeMobileNav(); closeFilterDrawer(); }
 });
 
 // Initialiseer dual fill op start
@@ -3249,6 +3415,7 @@ function updateNavFoto() {
     <button class="faq-tab" onclick="openFaqSection('aannemer-stappenplan',this)"><i data-lucide="hammer" style="width:14px;height:14px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-2px;margin-right:5px;"></i> Aannemer stappenplan</button>
     <button class="faq-tab" onclick="openFaqSection('klant-faq',this)"><i data-lucide="help-circle" style="width:14px;height:14px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-2px;margin-right:5px;"></i> FAQ Klanten</button>
     <button class="faq-tab" onclick="openFaqSection('aannemer-faq',this)"><i data-lucide="help-circle" style="width:14px;height:14px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-2px;margin-right:5px;"></i> FAQ Aannemers</button>
+    <button class="faq-tab" onclick="openFaqSection('algemeen-faq',this)"><i data-lucide="info" style="width:14px;height:14px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-2px;margin-right:5px;"></i> Over Klushub</button>
   </div>
   <div class="faq-content">
 
@@ -3395,7 +3562,7 @@ function updateNavFoto() {
       <div class="faq-accordion">
 
         <div style="font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--blue-light);margin:0 0 10px 4px;">Aanmelden & account</div>
-        <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Hoe meld ik me aan als aannemer?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Klik op <strong>Aannemer Login</strong> rechtsboven en kies "Registreren". Vul je naam, bedrijfsnaam, e-mailadres, wachtwoord en specialisme in. Je account is direct actief en de eerste 30 dagen zijn volledig gratis — geen creditcard vereist. Bekijk het <a onclick="openFaqSection('aannemer-stappenplan',document.querySelectorAll('.faq-tab')[3])" style="color:#2E5FBE;font-weight:700;cursor:pointer;">stappenplan voor aannemers</a> voor een volledige uitleg.</p></div></div>
+        <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Hoe meld ik me aan als aannemer?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Klik op <strong>Aannemer Login</strong> rechtsboven en kies "Registreren". Vul je naam, bedrijfsnaam, e-mailadres, wachtwoord en specialisme in. Je account is direct actief en de eerste 30 dagen zijn volledig gratis — geen creditcard vereist. Bekijk het <a onclick="openFaqSection('aannemer-stappenplan',document.querySelectorAll('.faq-tab')[1])" style="color:#2E5FBE;font-weight:700;cursor:pointer;">stappenplan voor aannemers</a> voor een volledige uitleg.</p></div></div>
         <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Wat kost een abonnement?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Er zijn twee betaalde abonnementen: <strong>Pro Aannemer</strong> voor € 49 per maand (onbeperkt aanbiedingen, verified badge, prioriteit in zoekresultaten) en <strong>Business</strong> voor € 129 per maand (alles uit Pro + meerdere medewerkerprofielen en featured plaatsing). De eerste 30 dagen zijn altijd gratis.</p></div></div>
         <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Hoe zeg ik mijn abonnement op?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Je kunt je abonnement op elk moment opzeggen via je profielinstellingen. Na opzegging blijf je toegang houden tot het einde van je betaalde periode. Er zijn geen opzegkosten.</p></div></div>
         <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Hoe bouw ik een sterk profiel op?</span><span class="faq-q-icon">+</span></button><div class="faq-a"><p>Een sterk profiel heeft een complete bedrijfsnaam, duidelijk specialisme, foto's van eerder werk en zo veel mogelijk positieve reviews. Vul ook je standplaats in zodat klanten kunnen zien hoe ver jij van de klus vandaan zit. Aannemers met 10+ reviews worden gemiddeld 60% vaker gekozen.</p></div></div>
@@ -3516,6 +3683,7 @@ function updateNavFoto() {
       <option value="reviews">Meeste reviews</option>
       <option value="naam">Naam A–Z</option>
     </select>
+    <button class="mobile-filter-btn" onclick="openFilterDrawer('aannemers')"><i data-lucide="sliders-horizontal" style="width:16px;height:16px;margin:0"></i> Filters</button>
     <div class="tb-right">
       <span class="res-ct"><strong id="anVisCt">—</strong> aannemers</span>
     </div>
