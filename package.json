@@ -1,0 +1,14 @@
+{
+  "name": "klushub-codex-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Codex QA setup for Klushub",
+  "scripts": {
+    "test:smoke": "node tests/smoke/klushub.smoke.js",
+    "test:ui": "playwright test",
+    "test:headed": "playwright test --project=chromium --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}

@@ -1,1 +1,4 @@
 index.codex-backup-*.html
+node_modules/
+test-results/
+playwright-report/
