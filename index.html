@@ -1408,8 +1408,8 @@ async function sendEmailNotification(type, recipientEmail, data) {
 
   try {
     // Use Supabase Edge Function or fallback to demo mode
-    const { data: result, error } = await sb.functions.invoke('send-notification-email', {
-      body: { type, recipientEmail, data }
+    const { data: result, error } = await sb.functions.invoke('resend-email', {
+      body: { type, recipient_email: recipientEmail, data }
     });
 
     if (error) {
@@ -2104,13 +2104,13 @@ async function insertKlus(payload, btnId) {
     klussen.unshift({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
     try { localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen)); } catch(e) { console.warn('localStorage vol'); }
 
-    // Send confirmation email to customer
-    sendEmailNotification('job_posted', payload.email, {
+    // Send confirmation email to customer (non-blocking)
+    await sendEmailNotification('job_posted', payload.email, {
       id: data.id,
-      omschrijving: payload.omschrijving,
-      voornaam: payload.naam_klant || 'daar',
-      specialisatie: payload.type
-    });
+      job_title: payload.omschrijving,
+      manage_link: window.location.origin + '?token=' + beheerToken,
+      voornaam: payload.naam_klant || 'daar'
+    }).catch(e => console.warn('Email send failed:', e));
 
     showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
   } else {
