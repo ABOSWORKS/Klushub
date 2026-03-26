@@ -1575,8 +1575,20 @@ function applyFilters() {
   // 4. Regio (postcode + radius)
   if (filterState.lat !== null && filterState.lng !== null) {
     lijst = lijst.filter(k => {
-      if (!k.lat || !k.lng) return true; // zonder coördinaten altijd tonen
-      const d = haversineKm(filterState.lat, filterState.lng, k.lat, k.lng);
+      let kLat, kLng;
+      if (k.lat && k.lng) {
+        kLat = k.lat;
+        kLng = k.lng;
+      } else if (k.stad) {
+        // If no coordinates, use stad lookup
+        const stadCoords = getStadCoords(k.stad);
+        if (!stadCoords) return false; // Onbekende stad niet tonen
+        kLat = stadCoords.lat;
+        kLng = stadCoords.lng;
+      } else {
+        return false; // Geen stad en geen coördinaten: niet tonen
+      }
+      const d = haversineKm(filterState.lat, filterState.lng, kLat, kLng);
       return d <= filterState.radius;
     });
   }
@@ -3078,7 +3090,7 @@ function applyAnFilters() {
       if (a.lat && a.lng) return haversineKm(anFilterState.lat, anFilterState.lng, a.lat, a.lng) <= anFilterState.radius;
       const sc = getStadCoords(a.stad||'');
       if (sc) return haversineKm(anFilterState.lat, anFilterState.lng, sc.lat, sc.lng) <= anFilterState.radius;
-      return true;
+      return false; // No coordinates and no stad: filter out
     });
   }
   // Sortering
