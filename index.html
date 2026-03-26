@@ -2180,7 +2180,7 @@ async function loadMijnKlussen() {
   document.getElementById('mkp-subtitle').textContent = `${data.length} aanbieding${data.length!==1?'en':''} verstuurd`;
 
   const now = new Date();
-  body.innerHTML = data.map(aanb => {
+  body.innerHTML = data.filter(aanb => aanb.klussen).map(aanb => {
     const k = aanb.klussen;
     const isVerlopen = k.status === 'open' && k.deadline && new Date(k.deadline) < now;
     const klusStatus = isVerlopen ? 'verlopen' : k.status;
@@ -2395,11 +2395,11 @@ async function submitReview() {
 
     // Send notification to contractor about review
     if (aannemerData?.email) {
-      sendEmailNotification('review_posted', aannemerData.email, {
+      await sendEmailNotification('review_posted', aannemerData.email, {
         voornaam: aannemerData.voornaam || 'Vakman',
         rating: Math.round(avgScore),
         review_text: reviewText || 'Goed werk geleverd!'
-      });
+      }).catch(e => console.warn('Review email failed:', e));
     }
 
     showReviewSuccess();
@@ -2425,11 +2425,11 @@ async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aan
 
   // Send notification to contractor
   if (aannemerData?.email) {
-    sendEmailNotification('bid_accepted', aannemerData.email, {
+    await sendEmailNotification('bid_accepted', aannemerData.email, {
       voornaam: aannemerData.voornaam || 'Vakman',
       omschrijving: klusData?.omschrijving || 'Je klus',
       klant_email: klusData?.email_klant || ''
-    });
+    }).catch(e => console.warn('Bid accepted email failed:', e));
   }
 
   showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen!');
@@ -2702,56 +2702,6 @@ function closeEditProfile() {
   document.body.style.overflow = '';
 }
 
-async function saveEditProfile() {
-  if (!sb) { showToast('Demo modus: werkt met echte Supabase'); return; }
-  
-  const fname = document.getElementById('ep-fname').value.trim();
-  const lname = document.getElementById('ep-lname').value.trim();
-  if (!fname || !lname) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Voornaam en achternaam zijn verplicht', true); return; }
-
-  const btn = document.getElementById('ep-save-btn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner spinner-dark"></span>';
-
-  const payload = {
-    voornaam: fname,
-    achternaam: lname,
-    bedrijfsnaam: document.getElementById('ep-company').value.trim(),
-    postcode: document.getElementById('ep-postcode').value.trim(),
-    stad: document.getElementById('ep-stad').value.trim(),
-    telefoon: document.getElementById('ep-telefoon').value.trim(),
-    specialisme: document.getElementById('ep-spec').value,
-    bio: document.getElementById('ep-bio').value.trim(),
-    bijgewerkt: new Date().toISOString()
-  };
-
-  let error;
-  let newId = currentUser.id;
-
-  if (currentUser.id) {
-    // Update bestaand profiel
-    const res = await sb.from('aannemers').update(payload).eq('id', currentUser.id);
-    error = res.error;
-  } else {
-    // Maak nieuw profiel aan (bijv. als aannemer record bij registratie mislukt was door RLS)
-    payload.auth_id = currentUser.auth_id;
-    payload.abonnement = 'starter';
-    const res = await sb.from('aannemers').insert(payload).select('id').single();
-    error = res.error;
-    if (res.data) newId = res.data.id;
-  }
-
-  btn.disabled = false; btn.innerHTML = 'Profiel opslaan →';
-
-  if (error) { 
-    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true); 
-  } else {
-    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Profiel succesvol bijgewerkt!');
-    closeEditProfile();
-    currentUser = { ...currentUser, ...payload, id: newId };
-    updateNavAuth();
-  }
-}
-
 // ══════════════════════════════════════════════════
 // 9. AANBIEDEN
 // ══════════════════════════════════════════════════
@@ -2791,7 +2741,7 @@ async function submitAanbieding() {
 
     // Send notification to customer
     if (klusData?.email_klant) {
-      sendEmailNotification('bid_received', klusData.email_klant, {
+      await sendEmailNotification('bid_received', klusData.email_klant, {
         omschrijving: klusData.omschrijving,
         aannemer: {
           voornaam: currentUser.voornaam || 'Een vakman',
@@ -2800,7 +2750,7 @@ async function submitAanbieding() {
         },
         prijs: prijs,
         doorloop: doorloop
-      });
+      }).catch(e => console.warn('Bid email failed:', e));
     }
 
     closeModal();
@@ -2911,6 +2861,12 @@ function closeLock() { document.getElementById('lockOverlay').classList.remove('
 // 11. NAVIGATIE
 // ══════════════════════════════════════════════════
 function showPage(id) {
+  // Close navigation/filter overlays on page change
+  ['mobileNavOverlay','filterDrawerOverlay','modalOverlay','aannemerProfielOverlay'].forEach(oid => {
+    const o = document.getElementById(oid); if (o) o.classList.remove('open');
+  });
+  document.body.style.overflow = '';
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-'+id);
   if (!el) { console.error('Page not found: page-'+id); return; }
@@ -2919,7 +2875,6 @@ function showPage(id) {
   if (id==='landing') initReveal();
   if (id==='klussen') { loadKlussen(); }
   if (id==='aannemers') { loadAannemers(); }
-  if (id==='faq') { if (window.lucide) lucide.createIcons(); }
   if (window.lucide) lucide.createIcons();
 }
 function goLanding(hash) { showPage('landing'); setTimeout(() => { const el=document.querySelector(hash); if(el)el.scrollIntoView({behavior:'smooth'}); }, 80); }
@@ -3173,7 +3128,7 @@ async function openAannemerProfiel(id) {
   const ini = ((a.voornaam?.[0]||'') + (a.achternaam?.[0]||'')).toUpperCase() || '?';
   const apAv = document.getElementById('ap-avatar');
   if (a.foto_url) {
-    apAv.innerHTML = `<img src="${a.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:14px;">`;
+    apAv.innerHTML = `<img src="${escHtml(a.foto_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:14px;">`;
   } else {
     apAv.textContent = ini;
   }
@@ -3326,10 +3281,10 @@ function onAnRegioInput() {
   }, 700);
 }
 
-function setAnQuickCity(city) {
+function setAnQuickCity(city, el) {
   document.getElementById('an-regio-input').value = city;
   document.querySelectorAll('.city-chip').forEach(c => c.classList.remove('active'));
-  event.target.classList.add('active');
+  if (el) el.classList.add('active');
   onAnRegioInput();
 }
 
@@ -3431,8 +3386,6 @@ function openEditProfile() {
   if (statusEl) statusEl.textContent = '';
 }
 
-// Override saveEditProfile to handle foto
-const _origSaveEditProfile = saveEditProfile;
 async function saveEditProfile() {
   if (!sb) { showToast('Demo modus'); return; }
   const fname = document.getElementById('ep-fname').value.trim();
@@ -3506,7 +3459,7 @@ function updateNavFoto() {
   if (!av) return;
   if (currentUser.foto_url) {
     av.style.cssText = 'width:34px;height:34px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;';
-    av.innerHTML = `<img src="${currentUser.foto_url}" style="width:100%;height:100%;object-fit:cover;">`;
+    av.innerHTML = `<img src="${escHtml(currentUser.foto_url)}" style="width:100%;height:100%;object-fit:cover;">`;
   } else {
     const ini = ((currentUser.voornaam?.[0]||'') + (currentUser.achternaam?.[0]||'')).toUpperCase() || '?';
     av.style.cssText = '';
@@ -3859,10 +3812,10 @@ async function waitForLibraries() {
             <div class="regio-wrap">
               <input class="form-input" id="an-regio-input" type="text" placeholder="Stad of postcode" style="font-size:13px;padding:8px 11px;" oninput="onAnRegioInput()">
               <div class="quick-cities" style="margin-top:8px;">
-                <span class="city-chip" onclick="setAnQuickCity('Amsterdam')">Amsterdam</span>
-                <span class="city-chip" onclick="setAnQuickCity('Rotterdam')">Rotterdam</span>
-                <span class="city-chip" onclick="setAnQuickCity('Utrecht')">Utrecht</span>
-                <span class="city-chip" onclick="setAnQuickCity('Den Haag')">Den Haag</span>
+                <span class="city-chip" onclick="setAnQuickCity('Amsterdam',this)">Amsterdam</span>
+                <span class="city-chip" onclick="setAnQuickCity('Rotterdam',this)">Rotterdam</span>
+                <span class="city-chip" onclick="setAnQuickCity('Utrecht',this)">Utrecht</span>
+                <span class="city-chip" onclick="setAnQuickCity('Den Haag',this)">Den Haag</span>
               </div>
               <div id="an-regio-status" style="font-size:11px;color:var(--gray-text);margin-top:6px;min-height:14px;"></div>
               <div id="an-radius-wrap" style="display:none;margin-top:10px;">
