@@ -1382,7 +1382,8 @@ async function initAuth() {
 }
 
 async function loadProfile(user) {
-  const { data } = await sb.from('aannemers').select('*').eq('auth_id', user.id).single();
+  const { data, error } = await sb.from('aannemers').select('*').eq('auth_id', user.id).single();
+  if (error) console.warn('Profile load failed:', error.message);
   currentUser = data ? { ...data, email: user.email } : { auth_id: user.id, email: user.email, voornaam: user.email.split('@')[0], achternaam: '' };
   updateNavAuth();
 }
@@ -1495,7 +1496,11 @@ async function archiveerVerlopenKlussen() {
     .lt('deadline', vandaag);
 }
 
+let _loadingKlussen = false;
 async function loadKlussen(reset = true) {
+  if (_loadingKlussen) return;
+  _loadingKlussen = true;
+  try {
   if (!sb) { renderDemoKlussen(); return; }
 
   // Archiveer eerst verlopen klussen
@@ -1524,6 +1529,7 @@ async function loadKlussen(reset = true) {
 
   const hasMore = count > klussensOffset;
   document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+  } finally { _loadingKlussen = false; }
 }
 
 async function loadMore() {
@@ -2417,7 +2423,8 @@ async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aan
   const { error } = await sb.rpc('beheer_update_aanbieding', { p_klus_id: klusId, p_token: token, p_aanbieding_id: aanbiedingId, p_status: 'geaccepteerd' });
   if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Fout: ' + error.message, true); return; }
 
-  await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gekozen' });
+  const { error: statusErr } = await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gekozen' });
+  if (statusErr) console.warn('Klus status update failed:', statusErr.message);
 
   // Get contractor and job details for email
   const { data: aannemerData } = await sb.from('aannemers').select('email, voornaam, achternaam').eq('id', aannemerId).single();
@@ -2682,20 +2689,7 @@ async function saveEditKlus() {
 }
 
 // ── Edit Profile ──────────────────────────────────
-function openEditProfile() {
-  if (!currentUser) return;
-  document.getElementById('ep-fname').value = currentUser.voornaam || '';
-  document.getElementById('ep-lname').value = currentUser.achternaam || '';
-  document.getElementById('ep-company').value = currentUser.bedrijfsnaam || '';
-  document.getElementById('ep-postcode').value = currentUser.postcode || '';
-  document.getElementById('ep-stad').value = currentUser.stad || '';
-  document.getElementById('ep-telefoon').value = currentUser.telefoon || '';
-  document.getElementById('ep-spec').value = currentUser.specialisme || '';
-  document.getElementById('ep-bio').value = currentUser.bio || '';
-
-  document.getElementById('profileOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
+// openEditProfile defined below with foto support (line ~3368)
 
 function closeEditProfile() {
   document.getElementById('profileOverlay').classList.remove('open');
@@ -2846,8 +2840,9 @@ async function doRegister() {
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Account aanmaken…';
   const { data: authData, error: authErr } = await sb.auth.signUp({ email, password: pass });
   if (authErr) { btn.disabled=false; btn.innerHTML='Account aanmaken →'; setAuthErr('register',authErr.message); return; }
-  await sb.from('aannemers').insert({ auth_id: authData.user.id, voornaam: fname, achternaam: lname, bedrijfsnaam: company, specialisme: spec, abonnement: 'starter' });
+  const { error: profileErr } = await sb.from('aannemers').insert({ auth_id: authData.user.id, voornaam: fname, achternaam: lname, bedrijfsnaam: company, specialisme: spec, abonnement: 'starter' });
   btn.disabled=false; btn.innerHTML='Account aanmaken →';
+  if (profileErr) { setAuthErr('register', 'Profiel aanmaken mislukt: ' + profileErr.message); return; }
   closeAuth(); showToast(`✅ Welkom bij Klushub, ${fname}! Check je e-mail.`);
   setTimeout(() => { showPage('klussen'); switchP('klussen'); }, 1200);
 }
@@ -3363,12 +3358,21 @@ async function uploadFotoToSupabase(file, userId) {
   }
 }
 
-// Override openEditProfile to show current foto
-const _origOpenEditProfile = openEditProfile;
 function openEditProfile() {
+  if (!currentUser) return;
   _fotoFile = null;
   _fotoRemoved = false;
-  _origOpenEditProfile();
+  // Populate form fields
+  document.getElementById('ep-fname').value = currentUser.voornaam || '';
+  document.getElementById('ep-lname').value = currentUser.achternaam || '';
+  document.getElementById('ep-company').value = currentUser.bedrijfsnaam || '';
+  document.getElementById('ep-postcode').value = currentUser.postcode || '';
+  document.getElementById('ep-stad').value = currentUser.stad || '';
+  document.getElementById('ep-telefoon').value = currentUser.telefoon || '';
+  document.getElementById('ep-spec').value = currentUser.specialisme || '';
+  document.getElementById('ep-bio').value = currentUser.bio || '';
+  document.getElementById('profileOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
   // Toon huidige foto of initialen
   const prev = document.getElementById('ep-foto-preview');
   const removeBtn = document.getElementById('ep-foto-remove');
