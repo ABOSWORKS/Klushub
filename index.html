@@ -2914,6 +2914,7 @@ function showPage(id) {
   window.scrollTo(0,0);
   if (id==='landing') initReveal();
   if (id==='klussen') loadKlussen();
+  if (id==='faq' && window.lucide) lucide.createIcons(); // Render Lucide icons when showing FAQ
 }
 function goLanding(hash) { showPage('landing'); setTimeout(() => { const el=document.querySelector(hash); if(el)el.scrollIntoView({behavior:'smooth'}); }, 80); }
 function switchP(view) {
@@ -3509,7 +3510,22 @@ function updateNavFoto() {
 
 
 
+// Wait for Supabase and Lucide libraries to load before initializing
+async function waitForLibraries() {
+  // Wait for Supabase library
+  while (!window.supabase) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  // Wait for Lucide library
+  while (!window.lucide) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+}
+
 (async () => {
+  // CRITICAL: Wait for external libraries to load first
+  await waitForLibraries();
+
   const ok = initSupabase();
   await initAuth();
   await loadStats();
