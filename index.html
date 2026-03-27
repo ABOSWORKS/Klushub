@@ -1252,6 +1252,8 @@ let filteredKlussen = [];     // na filters
 let klussensOffset = 0;
 const PAGE_SIZE = 50;         // laden we meer zodat client-side filter goed werkt
 const KLUS_PUBLISH_TIMEOUT_MS = 15000;
+const KLUS_LOAD_TIMEOUT_MS = 12000;
+const PUBLISH_BUTTON_HTML = '<span>Klus publiceren</span><span>→</span>';
 const EMAIL_CHAIN_FUNCTION = 'send-klus-email-chain';
 
 // ─── Filter state ──────────────────────────────
@@ -1310,6 +1312,29 @@ function getKlusPublishTimeoutMs() {
   const override = Number(window.__KLUSHUB_PUBLISH_TIMEOUT_MS || 0);
   if (Number.isFinite(override) && override > 0) return override;
   return KLUS_PUBLISH_TIMEOUT_MS;
+}
+
+function getKlusLoadTimeoutMs() {
+  const override = Number(window.__KLUSHUB_KLUSSEN_LOAD_TIMEOUT_MS || 0);
+  if (Number.isFinite(override) && override > 0) return override;
+  return KLUS_LOAD_TIMEOUT_MS;
+}
+
+function resetPublishButton(btnId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = false;
+  btn.removeAttribute('aria-busy');
+  btn.innerHTML = PUBLISH_BUTTON_HTML;
+}
+
+function resetPublishButtons() {
+  ['hf-btn', 'full-btn'].forEach(resetPublishButton);
+}
+
+function setLoadMoreVisibility(visible) {
+  const wrap = document.getElementById('loadMoreWrap');
+  if (wrap) wrap.style.display = visible ? 'block' : 'none';
 }
 
 async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving }) {
@@ -1401,34 +1426,68 @@ async function archiveerVerlopenKlussen() {
 }
 
 async function loadKlussen(reset = true) {
-  if (!sb) { renderDemoKlussen(); return; }
+  if (!sb) {
+    renderDemoKlussen();
+    setLoadMoreVisibility(false);
+    return false;
+  }
 
-  // Archiveer eerst verlopen klussen
-  await archiveerVerlopenKlussen();
+  if (reset) {
+    klussensOffset = 0;
+    allKlussen = [];
+    const cardsList = document.getElementById('cardsList');
+    if (cardsList) {
+      cardsList.innerHTML = `
+        <div style="text-align:center;padding:60px 20px;color:var(--gray-text)">
+          <div style="margin-bottom:12px"><i data-lucide="hourglass" style="width:32px;height:32px;opacity:0.6"></i></div>
+          <div style="font-size:16px;font-weight:600">Klussen worden geladen...</div>
+        </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+  setLoadMoreVisibility(false);
 
-  if (reset) { klussensOffset = 0; allKlussen = []; }
+  try {
+    // Archiveer eerst verlopen klussen
+    await withTimeout(archiveerVerlopenKlussen(), getKlusLoadTimeoutMs(), 'Klussen archiveren');
 
   // Haal open klussen op — altijd gesorteerd op nieuwste eerst als basis
-  let query = sb
-    .from('klussen')
-    .select('*', { count: 'exact' })
-    .eq('status', 'open')
-    .order('aangemaakt', { ascending: false })
-    .range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
+    const query = sb
+      .from('klussen')
+      .select('*', { count: 'exact' })
+      .eq('status', 'open')
+      .order('aangemaakt', { ascending: false })
+      .range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
 
-  const { data, count, error } = await query;
-  if (error) { showToast('Klussen laden mislukt', true); return; }
+    const { data, count, error } = await withTimeout(query, getKlusLoadTimeoutMs(), 'Klussen laden');
+    if (error) throw error;
 
-  allKlussen = reset ? (data || []) : [...allKlussen, ...(data || [])];
-  klussensOffset += PAGE_SIZE;
+    const loadedKlussen = data || [];
+    allKlussen = reset ? loadedKlussen : [...allKlussen, ...loadedKlussen];
+    klussensOffset += loadedKlussen.length;
 
-  document.getElementById('kh-open').textContent = count || allKlussen.length;
+    const khOpen = document.getElementById('kh-open');
+    if (khOpen) khOpen.textContent = typeof count === 'number' ? count : allKlussen.length;
 
-  // Pas client-side filters toe
-  applyFilters();
+    // Pas client-side filters toe
+    applyFilters();
 
-  const hasMore = count > klussensOffset;
-  document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+    const hasMore = typeof count === 'number' ? count > klussensOffset : loadedKlussen.length === PAGE_SIZE;
+    setLoadMoreVisibility(hasMore);
+    return true;
+  } catch (err) {
+    console.warn('Klussen laden mislukt, fallback volgt:', err);
+    showToast('Klussen laden duurt te lang. Demo-klussen worden tijdelijk getoond.', true);
+    if (reset || !allKlussen.length) {
+      klussensOffset = 0;
+      allKlussen = [];
+      renderDemoKlussen();
+    } else {
+      applyFilters();
+    }
+    setLoadMoreVisibility(false);
+    return false;
+  }
 }
 
 async function loadMore() {
@@ -1949,6 +2008,7 @@ function renderDemoKlussen() {
   applyFilters();
   document.getElementById('kh-open').textContent = demo.length;
   updateCatCounts(demo);
+  setLoadMoreVisibility(false);
 }
 
 function updateCatCounts(lijst) {
@@ -2057,7 +2117,11 @@ async function submitFullForm() {
 // ⚠️ Test ALTIJD: 1) Vul formulier, 2) Klik "Publiceren", 3) Controleer modal verschijnt
 async function insertKlus(payload, btnId) {
   const btn = document.getElementById(btnId);
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publiceren…'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner"></span> Publiceren...';
+  }
   try {
     if (!sb) {
       await new Promise(r => setTimeout(r, 900));
@@ -2098,7 +2162,7 @@ async function insertKlus(payload, btnId) {
       showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Publiceren mislukt: ' + msg, true);
     }
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>'; }
+    resetPublishButtons();
   }
 }
 
@@ -2208,11 +2272,10 @@ function setBevestigingOverlayState(overlay, isOpen) {
 function showKlusBevestiging(klusId, token, omschrijving) {
   _bevKlusId = klusId;
   _bevToken  = token;
-  ['hf-btn','full-btn'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) { b.disabled = false; b.innerHTML = '<span>Klus publiceren</span><span>→</span>'; }
-  });
-  setTimeout(() => { try { loadKlussen(); } catch(e) {} }, 500);
+  resetPublishButtons();
+  setTimeout(() => {
+    void loadKlussen().catch(err => console.warn('Klussen verversen na publicatie mislukt:', err));
+  }, 500);
 
   const overlay = document.getElementById('bevestigingOverlay');
   if (overlay) {
@@ -2899,7 +2962,7 @@ function showPage(id) {
   nextPage.classList.add('active');
   window.scrollTo(0,0);
   if (id==='landing') initReveal();
-  if (id==='klussen') loadKlussen();
+  if (id==='klussen') void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
   if (id==='aannemers') { if (typeof renderDemoAannemers === 'function') renderDemoAannemers(); if (typeof loadAannemers === 'function') loadAannemers(); }
   if (id==='faq') openFaqSection('stappenplan', document.querySelector('#page-faq .faq-tab'));
 }
@@ -2912,7 +2975,7 @@ function switchP(view) {
   const t = { plaatsen:['Plaats jouw <em>klus</em>','Gratis en vrijblijvend. Ontvang aanbiedingen.','Klus plaatsen'], klussen:['Openstaande <em>klussen</em>','Bekijk alle projecten en bied jezelf aan.','Openstaande klussen'] }[view];
   document.getElementById('kh-title').innerHTML=t[0]; document.getElementById('kh-sub').textContent=t[1]; document.getElementById('kh-bc').textContent=t[2];
   window.scrollTo({top:0,behavior:'smooth'});
-  if (view==='klussen') loadKlussen();
+  if (view==='klussen') void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
 }
 function switchHowTab(tab,btn) {
   document.querySelectorAll('.how-tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active');

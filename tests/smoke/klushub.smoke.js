@@ -237,10 +237,13 @@ async function run() {
       document.getElementById('hf-budget').value = '1500';
       await doHeroSubmit();
       const btn = document.getElementById('hf-btn');
+      const fullBtn = document.getElementById('full-btn');
       return {
         ok: true,
         disabled: !!btn && btn.disabled,
         text: btn ? btn.textContent.trim() : '',
+        fullDisabled: !!fullBtn && fullBtn.disabled,
+        fullText: fullBtn ? fullBtn.textContent.trim() : '',
       };
     } catch (e) {
       return { ok: false, err: String(e) };
@@ -251,6 +254,54 @@ async function run() {
   assert(publishTimeoutGuard.ok, `Publish timeout guard crashed: ${publishTimeoutGuard.err || 'unknown'}`);
   assert(!publishTimeoutGuard.disabled, 'Publish timeout guard faalde: knop blijft disabled');
   assert(/Klus publiceren/i.test(publishTimeoutGuard.text), `Publish timeout guard faalde: knoptekst niet hersteld (${publishTimeoutGuard.text})`);
+  assert(!publishTimeoutGuard.fullDisabled, 'Publish timeout guard faalde: full form knop blijft disabled');
+  assert(/Klus publiceren/i.test(publishTimeoutGuard.fullText), `Publish timeout guard faalde: full form knoptekst niet hersteld (${publishTimeoutGuard.fullText})`);
+
+  const klussenTimeoutFallback = await page.evaluate(async () => {
+    const originalSb = sb;
+    try {
+      window.__KLUSHUB_KLUSSEN_LOAD_TIMEOUT_MS = 200;
+      resetFilters();
+      allKlussen = [];
+      filteredKlussen = [];
+      klussensOffset = 0;
+      sb = {
+        from: () => ({
+          update: () => ({
+            eq: () => ({
+              lt: () => Promise.resolve({}),
+            }),
+          }),
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                range: () => new Promise(() => {}),
+              }),
+            }),
+          }),
+        }),
+      };
+      const result = await loadKlussen(true);
+      const cardsList = document.getElementById('cardsList');
+      const loadMoreWrap = document.getElementById('loadMoreWrap');
+      return {
+        ok: true,
+        result,
+        loading: cardsList ? /Klussen worden geladen/i.test(cardsList.textContent) : true,
+        hasContent: cardsList ? cardsList.textContent.trim().length > 20 : false,
+        loadMoreVisible: !!loadMoreWrap && getComputedStyle(loadMoreWrap).display !== 'none',
+      };
+    } catch (e) {
+      return { ok: false, err: String(e) };
+    } finally {
+      sb = originalSb;
+      window.__KLUSHUB_KLUSSEN_LOAD_TIMEOUT_MS = 0;
+    }
+  });
+  assert(klussenTimeoutFallback.ok, `Klussen timeout fallback crashed: ${klussenTimeoutFallback.err || 'unknown'}`);
+  assert(!klussenTimeoutFallback.loading, 'Openstaande klussen blijven op laadplaceholder hangen');
+  assert(klussenTimeoutFallback.hasContent, 'Openstaande klussen tonen geen fallback content na timeout');
+  assert(!klussenTimeoutFallback.loadMoreVisible, 'Load more blijft zichtbaar na timeout fallback');
 
   assert(pageErrors.length === 0, `Onverwachte page errors: ${pageErrors.join(' | ')}`);
 

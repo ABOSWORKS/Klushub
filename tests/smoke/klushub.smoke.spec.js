@@ -117,3 +117,51 @@ test('full postcode vult full stad automatisch in', async ({ page }) => {
   await expect(page.locator('#full-postcode')).toHaveValue('5705 CL');
   await expect(page.locator('#full-stad')).toHaveValue('Helmond');
 });
+
+test('openstaande klussen valt terug naar content bij timeout', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const originalSb = sb;
+    try {
+      window.__KLUSHUB_KLUSSEN_LOAD_TIMEOUT_MS = 200;
+      resetFilters();
+      allKlussen = [];
+      filteredKlussen = [];
+      klussensOffset = 0;
+      sb = {
+        from: () => ({
+          update: () => ({
+            eq: () => ({
+              lt: () => Promise.resolve({}),
+            }),
+          }),
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                range: () => new Promise(() => {}),
+              }),
+            }),
+          }),
+        }),
+      };
+      await loadKlussen(true);
+      const cardsList = document.getElementById('cardsList');
+      const loadMoreWrap = document.getElementById('loadMoreWrap');
+      return {
+        ok: true,
+        loading: cardsList ? /Klussen worden geladen/i.test(cardsList.textContent) : true,
+        hasContent: cardsList ? cardsList.textContent.trim().length > 20 : false,
+        loadMoreVisible: !!loadMoreWrap && getComputedStyle(loadMoreWrap).display !== 'none',
+      };
+    } catch (e) {
+      return { ok: false, err: String(e) };
+    } finally {
+      sb = originalSb;
+      window.__KLUSHUB_KLUSSEN_LOAD_TIMEOUT_MS = 0;
+    }
+  });
+
+  expect(result.ok).toBeTruthy();
+  expect(result.loading).toBeFalsy();
+  expect(result.hasContent).toBeTruthy();
+  expect(result.loadMoreVisible).toBeFalsy();
+});
