@@ -2112,7 +2112,17 @@ async function insertKlus(payload, btnId) {
   // FIX: genereer beheer_token client-side zodat we niet op DB-response hoeven te wachten
   const beheerToken = crypto.randomUUID();
   payload.beheer_token = beheerToken;
-  const { data, error } = await sb.from('klussen').insert(payload).select('id').single();
+  let data = null, error = null;
+  try {
+    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('Verzoek duurde te lang. Controleer je verbinding en probeer opnieuw.')), 15000));
+    const result = await Promise.race([
+      sb.from('klussen').insert(payload).select('id').single(),
+      timeoutPromise
+    ]);
+    data = result.data; error = result.error;
+  } catch(e) {
+    error = { message: e.message };
+  }
   btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>';
   if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true); }
   else if (data && data.id) {
@@ -2122,10 +2132,10 @@ async function insertKlus(payload, btnId) {
     klussen.unshift({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
     try { localStorage.setItem('klushub_geplaatste_klussen', JSON.stringify(klussen)); } catch(e) { console.warn('localStorage vol'); }
 
-    // Send confirmation email to customer (non-blocking)
+    // Send confirmation email to customer (non-blocking — geen await)
     const customerEmail = payload.email_klant || payload.email || '';
     if (customerEmail) {
-      await sendEmailNotification('job_posted', customerEmail, {
+      sendEmailNotification('job_posted', customerEmail, {
         job_title: payload.omschrijving || 'Nieuwe klus',
         manage_link: window.location.origin + '?beheer=' + data.id + '&token=' + beheerToken,
         voornaam: payload.naam_klant || 'daar'
@@ -2869,7 +2879,11 @@ function showPage(id) {
   window.scrollTo(0,0);
   if (id==='landing') initReveal();
   if (id==='klussen') { loadKlussen(); }
-  if (id==='aannemers') { loadAannemers(); }
+  if (id==='aannemers') { renderDemoAannemers(); loadAannemers(); }
+  if (id==='faq') {
+    const firstTab = document.querySelector('#page-faq .faq-tab');
+    openFaqSection('stappenplan', firstTab);
+  }
   if (window.lucide) lucide.createIcons();
 }
 function goLanding(hash) { showPage('landing'); setTimeout(() => { const el=document.querySelector(hash); if(el)el.scrollIntoView({behavior:'smooth'}); }, 80); }
@@ -2964,10 +2978,19 @@ let anGeoTimer = null;
 
 async function loadAannemers() {
   if (!sb) { renderDemoAannemers(); return; }
-  const { data, error } = await sb
-    .from('aannemers')
-    .select('*, reviews(score_kwaliteit,score_communicatie,score_prijs_kwaliteit,score_tijdigheid,score_netheid,tekst,aangemaakt)')
-    .order('aangemaakt', { ascending: false });
+  let data = null, error = null;
+  try {
+    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
+    const result = await Promise.race([
+      sb.from('aannemers')
+        .select('*, reviews(score_kwaliteit,score_communicatie,score_prijs_kwaliteit,score_tijdigheid,score_netheid,tekst,aangemaakt)')
+        .order('aangemaakt', { ascending: false }),
+      timeoutPromise
+    ]);
+    data = result.data; error = result.error;
+  } catch(e) {
+    error = { message: e.message };
+  }
   if (error) { showToast('Aannemers laden mislukt', true); renderDemoAannemers(); return; }
   // Bereken gemiddelden per aannemer
   allAannemers = (data || []).map(a => {
@@ -3360,34 +3383,37 @@ async function uploadFotoToSupabase(file, userId) {
 
 function openEditProfile() {
   if (!currentUser) return;
-  _fotoFile = null;
-  _fotoRemoved = false;
-  // Populate form fields
-  document.getElementById('ep-fname').value = currentUser.voornaam || '';
-  document.getElementById('ep-lname').value = currentUser.achternaam || '';
-  document.getElementById('ep-company').value = currentUser.bedrijfsnaam || '';
-  document.getElementById('ep-postcode').value = currentUser.postcode || '';
-  document.getElementById('ep-stad').value = currentUser.stad || '';
-  document.getElementById('ep-telefoon').value = currentUser.telefoon || '';
-  document.getElementById('ep-spec').value = currentUser.specialisme || '';
-  document.getElementById('ep-bio').value = currentUser.bio || '';
-  document.getElementById('profileOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-  // Toon huidige foto of initialen
-  const prev = document.getElementById('ep-foto-preview');
-  const removeBtn = document.getElementById('ep-foto-remove');
-  const statusEl = document.getElementById('ep-foto-status');
-  if (!prev) return;
-  _fotoUrl = currentUser?.foto_url || null;
-  if (_fotoUrl) {
-    prev.innerHTML = `<img src="${_fotoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
-    if (removeBtn) removeBtn.style.display = 'inline-flex';
-  } else {
-    const ini = ((currentUser?.voornaam?.[0]||'') + (currentUser?.achternaam?.[0]||'')).toUpperCase() || '?';
-    prev.innerHTML = ini;
-    if (removeBtn) removeBtn.style.display = 'none';
+  try {
+    _fotoFile = null;
+    _fotoRemoved = false;
+    // Populate form fields
+    const fields = { 'ep-fname': currentUser.voornaam, 'ep-lname': currentUser.achternaam, 'ep-company': currentUser.bedrijfsnaam, 'ep-postcode': currentUser.postcode, 'ep-stad': currentUser.stad, 'ep-telefoon': currentUser.telefoon, 'ep-spec': currentUser.specialisme, 'ep-bio': currentUser.bio };
+    for (const [id, val] of Object.entries(fields)) {
+      const el = document.getElementById(id);
+      if (el) el.value = val || '';
+    }
+    document.getElementById('profileOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    // Toon huidige foto of initialen
+    const prev = document.getElementById('ep-foto-preview');
+    const removeBtn = document.getElementById('ep-foto-remove');
+    const statusEl = document.getElementById('ep-foto-status');
+    _fotoUrl = currentUser?.foto_url || null;
+    if (prev) {
+      if (_fotoUrl) {
+        prev.innerHTML = `<img src="${_fotoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
+        if (removeBtn) removeBtn.style.display = 'inline-flex';
+      } else {
+        const ini = ((currentUser?.voornaam?.[0]||'') + (currentUser?.achternaam?.[0]||'')).toUpperCase() || '?';
+        prev.innerHTML = ini;
+        if (removeBtn) removeBtn.style.display = 'none';
+      }
+    }
+    if (statusEl) statusEl.textContent = '';
+  } catch(e) {
+    console.error('openEditProfile fout:', e);
+    showToast('Profiel kan niet worden geopend. Probeer opnieuw.', true);
   }
-  if (statusEl) statusEl.textContent = '';
 }
 
 async function saveEditProfile() {
