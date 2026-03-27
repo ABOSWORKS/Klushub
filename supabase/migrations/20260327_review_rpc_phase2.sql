@@ -1,5 +1,6 @@
 -- Phase 2: Review RPC endpoints for richer trust + feed UI.
--- Designed to stay compatible with the current reviews schema.
+-- This variant is aligned with the current production schema:
+-- public.reviews(kwaliteit, communicatie, prijs_kwaliteit, tijdigheid, netheid, ...)
 
 create schema if not exists public;
 
@@ -35,26 +36,27 @@ as $$
       r.id as review_id,
       r.aannemer_id as contractor_id,
       (
-        coalesce(r.score_kwaliteit, 0) +
-        coalesce(r.score_communicatie, 0) +
-        coalesce(r.score_prijs_kwaliteit, 0) +
-        coalesce(r.score_tijdigheid, 0) +
-        coalesce(r.score_netheid, 0)
+        coalesce(r.kwaliteit, 0) +
+        coalesce(r.communicatie, 0) +
+        coalesce(r.prijs_kwaliteit, 0) +
+        coalesce(r.tijdigheid, 0) +
+        coalesce(r.netheid, 0)
       ) / 5.0 as rating,
       r.tekst as body,
-      coalesce(r.reviewer_type, 'klant') as reviewer_type,
-      coalesce((to_jsonb(r) ->> 'is_verified_job')::boolean, false) as is_verified_job,
-      coalesce((to_jsonb(r) ->> 'published_at')::timestamptz, r.aangemaakt) as published_at,
-      coalesce(to_jsonb(r) ->> 'city', null) as city,
-      coalesce(to_jsonb(r) ->> 'postcode', null) as postcode,
+      'klant'::text as reviewer_type,
+      true as is_verified_job,
+      r.aangemaakt as published_at,
+      a.stad as city,
+      a.postcode as postcode,
       jsonb_build_object(
-        'kwaliteit', coalesce(r.score_kwaliteit, 0),
-        'communicatie', coalesce(r.score_communicatie, 0),
-        'prijs_kwaliteit', coalesce(r.score_prijs_kwaliteit, 0),
-        'tijdigheid', coalesce(r.score_tijdigheid, 0),
-        'netheid', coalesce(r.score_netheid, 0)
+        'kwaliteit', coalesce(r.kwaliteit, 0),
+        'communicatie', coalesce(r.communicatie, 0),
+        'prijs_kwaliteit', coalesce(r.prijs_kwaliteit, 0),
+        'tijdigheid', coalesce(r.tijdigheid, 0),
+        'netheid', coalesce(r.netheid, 0)
       ) as subratings
     from public.reviews r
+    left join public.aannemers a on a.id = r.aannemer_id
     where r.aannemer_id = p_contractor_id
   ),
   scoped as (
@@ -74,9 +76,9 @@ as $$
     select
       s.*,
       (
-        (coalesce(s.rating, 0) * 0.70) +
-        (case when s.is_verified_job then 0.20 else 0 end) +
-        (case when s.published_at >= (now() - interval '90 days') then 0.10 else 0 end)
+        (coalesce(s.rating, 0) * 0.80) +
+        (case when s.is_verified_job then 0.15 else 0 end) +
+        (case when s.published_at >= (now() - interval '90 days') then 0.05 else 0 end)
       )::numeric as relevance_score
     from scoped s
   )
@@ -125,23 +127,23 @@ as $$
   with revs as (
     select
       (
-        coalesce(r.score_kwaliteit, 0) +
-        coalesce(r.score_communicatie, 0) +
-        coalesce(r.score_prijs_kwaliteit, 0) +
-        coalesce(r.score_tijdigheid, 0) +
-        coalesce(r.score_netheid, 0)
+        coalesce(r.kwaliteit, 0) +
+        coalesce(r.communicatie, 0) +
+        coalesce(r.prijs_kwaliteit, 0) +
+        coalesce(r.tijdigheid, 0) +
+        coalesce(r.netheid, 0)
       ) / 5.0 as rating,
-      coalesce((to_jsonb(r) ->> 'is_verified_job')::boolean, false) as is_verified_job,
-      coalesce((to_jsonb(r) ->> 'published_at')::timestamptz, r.aangemaakt) as published_at,
-      coalesce(to_jsonb(r) ->> 'city', null) as city
+      r.aangemaakt as published_at,
+      a.stad as city
     from public.reviews r
+    left join public.aannemers a on a.id = r.aannemer_id
     where r.aannemer_id = p_contractor_id
   ),
   agg as (
     select
       coalesce(avg(rating), 0)::numeric as avg_rating,
       count(*)::int as total_reviews,
-      coalesce(avg(case when is_verified_job then 1 else 0 end), 0)::numeric as verified_share,
+      1::numeric as verified_share,
       count(*) filter (where published_at >= (now() - interval '90 days'))::int as recent_90d_count,
       count(*) filter (
         where p_city is not null
