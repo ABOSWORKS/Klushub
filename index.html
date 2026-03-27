@@ -1256,8 +1256,17 @@ const KLUS_LOAD_TIMEOUT_MS = 12000;
 const PUBLISH_BUTTON_HTML = '<span>Klus publiceren</span><span>→</span>';
 const EMAIL_CHAIN_FUNCTION = 'resend-email';
 const AANBIEDING_TIMEOUT_MS = 12000;
+const MIJN_AANBIEDINGEN_TIMEOUT_MS = 12000;
+const EMAIL_CHAIN_TIMEOUT_MS = 8000;
+const AANBIEDING_BUTTON_HTML = 'Aanbieding versturen ✓';
 let klusPublishInFlight = false;
 let klussenLoadPromise = null;
+let klussenLoadStartedAt = 0;
+let aanbiedingSubmitInFlight = false;
+let aanbiedingSubmitStartedAt = 0;
+let mijnAanbiedingenLoadPromise = null;
+let mijnAanbiedingenLoadStartedAt = 0;
+let lastEmailChainWarningAt = 0;
 let lastArchiveRunAt = 0;
 const ARCHIVE_THROTTLE_MS = 180000;
 
@@ -1346,8 +1355,14 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
   if (!sb || !klusId || !beheerToken || !email || !sb.functions) return;
   const fnName = String(window.__KLUSHUB_EMAIL_FUNCTION || EMAIL_CHAIN_FUNCTION).trim();
   if (!fnName) return;
+  const warnEmailFailure = (message) => {
+    const now = Date.now();
+    if (now - lastEmailChainWarningAt < 5000) return;
+    lastEmailChainWarningAt = now;
+    showToast(`<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>${message}`, true);
+  };
   try {
-    const { error } = await withTimeout(
+    const { data, error } = await withTimeout(
       sb.functions.invoke(fnName, {
         body: {
           klus_id: klusId,
@@ -1356,12 +1371,26 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
           omschrijving: omschrijving || '',
         },
       }),
-      8000,
+      EMAIL_CHAIN_TIMEOUT_MS,
       'E-mailketen'
     );
-    if (error) console.warn('E-mailketen versturen mislukt:', error);
+    if (error) {
+      console.warn('E-mailketen versturen mislukt:', error);
+      const errMsg = String(error?.message || '').toLowerCase();
+      if (errMsg.includes('502') || errMsg.includes('resend')) {
+        warnEmailFailure('Klus geplaatst, maar e-mailservice gaf een fout. Gebruik de beheerknop om verder te gaan.');
+      } else {
+        warnEmailFailure('Klus geplaatst, maar e-mail kon niet worden verstuurd. Gebruik de beheerknop om verder te gaan.');
+      }
+      return;
+    }
+    if (data && data.ok === false) {
+      console.warn('E-mailketen response niet OK:', data);
+      warnEmailFailure('Klus geplaatst, maar e-mail kon niet worden bevestigd. Gebruik de beheerknop om verder te gaan.');
+    }
   } catch (err) {
     console.warn('E-mailketen timeout/mislukt:', err);
+    warnEmailFailure('Klus geplaatst, maar e-mail duurt te lang. Gebruik de beheerknop om verder te gaan.');
   }
 }
 
@@ -1428,11 +1457,28 @@ async function archiveerVerlopenKlussen() {
   if (now - lastArchiveRunAt < ARCHIVE_THROTTLE_MS) return;
   lastArchiveRunAt = now;
   const vandaag = new Date().toISOString().split('T')[0];
-  await sb
+  const { error } = await sb
     .from('klussen')
     .update({ status: 'verlopen' })
     .eq('status', 'open')
     .lt('deadline', vandaag);
+  if (error) console.warn('Archiveren verlopen klussen mislukt:', error);
+}
+
+async function updateOpenKlussenCount() {
+  if (!sb) return;
+  try {
+    const { count, error } = await withTimeout(
+      sb.from('klussen').select('*', { head: true, count: 'exact' }).eq('status', 'open'),
+      5000,
+      'Open klussen tellen'
+    );
+    if (error) throw error;
+    const khOpen = document.getElementById('kh-open');
+    if (khOpen && typeof count === 'number') khOpen.textContent = String(count);
+  } catch (err) {
+    console.warn('Exacte open-klussen teller mislukt:', err);
+  }
 }
 
 async function loadKlussen(reset = true) {
@@ -1441,7 +1487,14 @@ async function loadKlussen(reset = true) {
     setLoadMoreVisibility(false);
     return false;
   }
-  if (klussenLoadPromise) return klussenLoadPromise;
+  if (klussenLoadPromise) {
+    const maxWait = Math.max(getKlusLoadTimeoutMs(), 5000) + 2500;
+    if (Date.now() - klussenLoadStartedAt < maxWait) return klussenLoadPromise;
+    console.warn('Vastgelopen klussen-load gedetecteerd. Nieuwe laadpoging gestart.');
+    klussenLoadPromise = null;
+    klussenLoadStartedAt = 0;
+  }
+  klussenLoadStartedAt = Date.now();
   klussenLoadPromise = (async () => {
     if (reset) {
       klussensOffset = 0;
@@ -1459,15 +1512,15 @@ async function loadKlussen(reset = true) {
     setLoadMoreVisibility(false);
 
     try {
-      await withTimeout(archiveerVerlopenKlussen(), getKlusLoadTimeoutMs(), 'Klussen archiveren');
+      void archiveerVerlopenKlussen().catch(err => console.warn('Archiveren op achtergrond mislukt:', err));
       const query = sb
         .from('klussen')
-        .select('*', { count: 'exact' })
+        .select('*')
         .eq('status', 'open')
         .order('aangemaakt', { ascending: false })
         .range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
 
-      const { data, count, error } = await withTimeout(query, getKlusLoadTimeoutMs(), 'Klussen laden');
+      const { data, error } = await withTimeout(query, getKlusLoadTimeoutMs(), 'Klussen laden');
       if (error) throw error;
 
       const loadedKlussen = data || [];
@@ -1475,10 +1528,11 @@ async function loadKlussen(reset = true) {
       klussensOffset += loadedKlussen.length;
 
       const khOpen = document.getElementById('kh-open');
-      if (khOpen) khOpen.textContent = typeof count === 'number' ? count : allKlussen.length;
+      if (khOpen) khOpen.textContent = allKlussen.length;
 
       applyFilters();
-      const hasMore = typeof count === 'number' ? count > klussensOffset : loadedKlussen.length === PAGE_SIZE;
+      if (reset) void updateOpenKlussenCount();
+      const hasMore = loadedKlussen.length === PAGE_SIZE;
       setLoadMoreVisibility(hasMore);
       return true;
     } catch (err) {
@@ -1495,6 +1549,7 @@ async function loadKlussen(reset = true) {
       return false;
     } finally {
       klussenLoadPromise = null;
+      klussenLoadStartedAt = 0;
     }
   })();
   return klussenLoadPromise;
@@ -2210,7 +2265,17 @@ function closeMijnKlussen() {
 }
 
 async function loadMijnKlussen() {
+  if (mijnAanbiedingenLoadPromise) {
+    const maxWait = Math.max(MIJN_AANBIEDINGEN_TIMEOUT_MS, 5000) + 2500;
+    if (Date.now() - mijnAanbiedingenLoadStartedAt < maxWait) return mijnAanbiedingenLoadPromise;
+    console.warn('Vastgelopen "mijn aanbiedingen"-load gedetecteerd. Nieuwe laadpoging gestart.');
+    mijnAanbiedingenLoadPromise = null;
+    mijnAanbiedingenLoadStartedAt = 0;
+  }
+  mijnAanbiedingenLoadStartedAt = Date.now();
+  mijnAanbiedingenLoadPromise = (async () => {
   const body = document.getElementById('mkp-body');
+  if (!body) return;
   body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><div class="spinner spinner-dark" style="width:24px;height:24px;border-width:2px;margin-bottom:8px"></div></div><div style="font-size:15px;font-weight:600">Laden…</div></div>';
 
   if (!sb || !currentUser || !currentUser.id) {
@@ -2218,14 +2283,46 @@ async function loadMijnKlussen() {
     return;
   }
 
-  // Aanbiedingen ophalen (samen met gekoppelde klus data)
-  const { data, error } = await sb
-    .from('aanbiedingen')
-    .select('*, klussen(*)')
-    .eq('aannemer_id', currentUser.id)
-    .order('aangemaakt', { ascending: false });
+  // Aanbiedingen ophalen (licht), daarna gekoppelde klus data apart ophalen.
+  let data = null;
+  let error = null;
+  try {
+    const aanbiedingenResult = await withTimeout(
+      sb
+        .from('aanbiedingen')
+        .select('id, klus_id, status, prijs, doorlooptijd, bericht, aangemaakt')
+        .eq('aannemer_id', currentUser.id)
+        .order('aangemaakt', { ascending: false }),
+      MIJN_AANBIEDINGEN_TIMEOUT_MS,
+      'Mijn aanbiedingen laden'
+    );
+    data = aanbiedingenResult?.data || null;
+    error = aanbiedingenResult?.error || null;
+    if (!error && data && data.length > 0) {
+      const klusIds = [...new Set(data.map(a => a.klus_id).filter(Boolean))];
+      if (klusIds.length > 0) {
+        const klussenResult = await withTimeout(
+          sb
+            .from('klussen')
+            .select('id, status, deadline, budget, omschrijving, stad, postcode')
+            .in('id', klusIds),
+          8000,
+          'Klusdetails laden'
+        );
+        if (klussenResult?.error) throw klussenResult.error;
+        const klusMap = new Map((klussenResult?.data || []).map(k => [k.id, k]));
+        data = data.map(aanb => ({ ...aanb, klussen: klusMap.get(aanb.klus_id) || null }));
+      }
+    }
+  } catch (err) {
+    error = err;
+  }
 
-  if (error) { body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt</div></div>'; return; }
+  if (error) {
+    body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt</div><p style="font-size:13px;margin-top:6px">Probeer het opnieuw over enkele seconden.</p><button class="btn-p" style="font-size:13px;padding:8px 16px;margin-top:12px" onclick="loadMijnKlussen()">Opnieuw laden</button></div>';
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
   
   if (!data || data.length === 0) {
     body.innerHTML = `
@@ -2273,6 +2370,13 @@ async function loadMijnKlussen() {
     </div>`;
   }).join('');
   if (window.lucide) lucide.createIcons();
+  })();
+  try {
+    await mijnAanbiedingenLoadPromise;
+  } finally {
+    mijnAanbiedingenLoadPromise = null;
+    mijnAanbiedingenLoadStartedAt = 0;
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -2921,8 +3025,21 @@ async function submitAanbieding() {
   const doorloop = document.getElementById('m-doorloop').value.trim();
   const bericht  = document.getElementById('m-bericht').value.trim();
   if (!prijs) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul een prijs in', true); return; }
+  if (aanbiedingSubmitInFlight) {
+    const maxWait = Math.max(AANBIEDING_TIMEOUT_MS, 5000) + 4000;
+    if (Date.now() - aanbiedingSubmitStartedAt < maxWait) {
+      showToast('<i data-lucide="hourglass" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding wordt al verwerkt. Even geduld.', true);
+      return;
+    }
+    console.warn('Vastgelopen aanbod-submit gedetecteerd. Nieuwe submit toegestaan.');
+    aanbiedingSubmitInFlight = false;
+    aanbiedingSubmitStartedAt = 0;
+  }
+  aanbiedingSubmitInFlight = true;
+  aanbiedingSubmitStartedAt = Date.now();
   const btn = document.getElementById('m-send-btn');
   const klusIdSnapshot = currentKlusId;
+  const aannemerId = currentUser?.id || null;
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
     if (!sb || !klusIdSnapshot || klusIdSnapshot.startsWith('demo')) {
@@ -2931,11 +3048,17 @@ async function submitAanbieding() {
       showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)');
       return;
     }
-    const { error } = await withTimeout(
-      sb.from('aanbiedingen').insert({ klus_id: klusIdSnapshot, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht }),
+    if (!aannemerId) {
+      showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Je sessie is verlopen. Log opnieuw in.', true);
+      openAuth('login');
+      return;
+    }
+    const result = await withTimeout(
+      sb.from('aanbiedingen').insert({ klus_id: klusIdSnapshot, aannemer_id: aannemerId, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht }),
       AANBIEDING_TIMEOUT_MS,
       'Aanbieding versturen'
     );
+    const error = result?.error || null;
     if (error) {
       showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
       return;
@@ -2950,58 +3073,16 @@ async function submitAanbieding() {
       showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + msg, true);
     }
   } finally {
+    aanbiedingSubmitInFlight = false;
+    aanbiedingSubmitStartedAt = 0;
     btn.disabled = false;
-    btn.innerHTML = 'Aanbieding versturen ✓';
+    btn.innerHTML = AANBIEDING_BUTTON_HTML;
   }
 }
 
 // ══════════════════════════════════════════════════
 // 10. AUTH MODALS
 // ══════════════════════════════════════════════════
-// Veilige variant overschrijft submitAanbieding met timeout/finally-reset tegen vastlopende spinner.
-submitAanbieding = async function submitAanbiedingSafe() {
-  const prijs   = document.getElementById('m-prijs').value.replace(/[^0-9]/g,'');
-  const doorloop = document.getElementById('m-doorloop').value.trim();
-  const bericht  = document.getElementById('m-bericht').value.trim();
-  if (!prijs) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul een prijs in', true); return; }
-  const btn = document.getElementById('m-send-btn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-  try {
-    if (!sb || !currentKlusId || currentKlusId.startsWith('demo')) {
-      await new Promise(r => setTimeout(r, 700));
-      closeModal();
-      showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)');
-      return;
-    }
-    if (!currentUser || !currentUser.id) {
-      showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Je sessie is verlopen. Log opnieuw in.', true);
-      openAuth('login');
-      return;
-    }
-    const { error } = await withTimeout(
-      sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht }),
-      AANBIEDING_TIMEOUT_MS,
-      'Aanbieding versturen'
-    );
-    if (error) {
-      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
-      return;
-    }
-    closeModal();
-    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!');
-  } catch (err) {
-    const msg = err && err.message ? err.message : 'Onbekende fout';
-    if (msg.toLowerCase().includes('timeout')) {
-      showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding duurt te lang. Controleer je verbinding en probeer opnieuw.', true);
-    } else {
-      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + msg, true);
-    }
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Aanbieding versturen âœ“';
-  }
-};
-
 function openAuth(tab) { document.getElementById('authOverlay').classList.add('open'); document.body.style.overflow = 'hidden'; switchAuthTab(tab||'login'); }
 function closeAuth()   { document.getElementById('authOverlay').classList.remove('open'); document.body.style.overflow = ''; }
 function switchAuthTab(tab) {

@@ -38,7 +38,9 @@ serve(async (req: Request) => {
   if (req.method !== "POST") return jsonResponse(405, { ok: false, error: "Method not allowed" });
 
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  const emailFrom = Deno.env.get("EMAIL_FROM") || "Klushub <noreply@klushub.nl>";
+  const configuredFrom = Deno.env.get("EMAIL_FROM")?.trim();
+  const fallbackFrom = "Klushub <onboarding@resend.dev>";
+  const primaryFrom = configuredFrom || fallbackFrom;
   if (!resendApiKey) return jsonResponse(500, { ok: false, error: "Missing RESEND_API_KEY secret" });
 
   let payload: EmailPayload;
@@ -73,33 +75,44 @@ serve(async (req: Request) => {
     </div>
   `;
 
-  const resendResp = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: emailFrom,
-      to: [emailKlant],
-      subject,
-      html,
-    }),
-  });
+  async function sendWithFrom(fromAddress: string) {
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromAddress,
+        to: [emailKlant],
+        subject,
+        html,
+      }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    return { resp, data };
+  }
 
-  const resendData = await resendResp.json().catch(() => ({}));
-  if (!resendResp.ok) {
+  let sendAttempt = await sendWithFrom(primaryFrom);
+  if (!sendAttempt.resp.ok && primaryFrom !== fallbackFrom) {
+    // Veelvoorkomende productieblokkade: from-adres/domein niet geverifieerd.
+    sendAttempt = await sendWithFrom(fallbackFrom);
+  }
+
+  if (!sendAttempt.resp.ok) {
     return jsonResponse(502, {
       ok: false,
       error: "Resend API failed",
-      details: resendData,
+      fromTried: primaryFrom === fallbackFrom ? [fallbackFrom] : [primaryFrom, fallbackFrom],
+      details: sendAttempt.data,
     });
   }
 
   return jsonResponse(200, {
     ok: true,
     emailStatus: "sent",
-    resend: resendData,
+    resend: sendAttempt.data,
+    fromUsed: (sendAttempt.data as Record<string, unknown>)?.from ?? primaryFrom,
     manageUrl,
   });
 });
