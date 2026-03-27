@@ -2461,14 +2461,33 @@ async function submitReview() {
   const btn = document.getElementById('reviewSubmitBtn');
   btn.disabled = true; btn.textContent = 'Versturen…';
   if (!sb) { await new Promise(r => setTimeout(r,700)); btn.disabled=false; btn.textContent='Review versturen ★'; showReviewSuccess(); return; }
-  const { error } = await sb.from('reviews').insert({
-    klus_id: _reviewContext.klusId, aannemer_id: _reviewContext.aannemerId,
+  const reviewPayload = {
+    klus_id: _reviewContext.klusId,
+    aannemer_id: _reviewContext.aannemerId,
     reviewer_type: 'klant',
-    score_kwaliteit: _reviewScores.kwaliteit, score_communicatie: _reviewScores.communicatie,
-    score_prijs_kwaliteit: _reviewScores.prijs_kwaliteit, score_tijdigheid: _reviewScores.tijdigheid,
+    score_kwaliteit: _reviewScores.kwaliteit,
+    score_communicatie: _reviewScores.communicatie,
+    score_prijs_kwaliteit: _reviewScores.prijs_kwaliteit,
+    score_tijdigheid: _reviewScores.tijdigheid,
     score_netheid: _reviewScores.netheid,
     tekst: document.getElementById('reviewTekst').value.trim() || null,
+  };
+  let error = null;
+  const { error: rpcErr } = await sb.rpc('submit_review_verified', {
+    p_klus_id: reviewPayload.klus_id,
+    p_aannemer_id: reviewPayload.aannemer_id,
+    p_score_kwaliteit: reviewPayload.score_kwaliteit,
+    p_score_communicatie: reviewPayload.score_communicatie,
+    p_score_prijs_kwaliteit: reviewPayload.score_prijs_kwaliteit,
+    p_score_tijdigheid: reviewPayload.score_tijdigheid,
+    p_score_netheid: reviewPayload.score_netheid,
+    p_tekst: reviewPayload.tekst,
   });
+  if (rpcErr) {
+    // Fallback zolang de verified RPC nog niet in elke omgeving bestaat.
+    const { error: insertErr } = await sb.from('reviews').insert(reviewPayload);
+    error = insertErr || rpcErr;
+  }
   btn.disabled=false; btn.textContent='Review versturen ★';
   if (error) showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + error.message, true);
   else showReviewSuccess();
@@ -3058,6 +3077,57 @@ const anFilterState = {
 };
 let anGeoTimer = null;
 
+function getAannemerCoords(a) {
+  if (a && a.lat && a.lng) return { lat: a.lat, lng: a.lng };
+  return getStadCoords(a?.stad || '');
+}
+
+function getAannemerDistanceKm(a) {
+  if (anFilterState.lat === null || anFilterState.lng === null) return null;
+  const coords = getAannemerCoords(a);
+  if (!coords) return null;
+  return haversineKm(anFilterState.lat, anFilterState.lng, coords.lat, coords.lng);
+}
+
+function calcReviewConfidence(reviewCount) {
+  const n = Number(reviewCount || 0);
+  if (n >= 25) return 'Zeer betrouwbaar';
+  if (n >= 10) return 'Betrouwbaar';
+  if (n >= 3) return 'Opbouwend';
+  return 'Beperkte reviewdata';
+}
+
+function calcTrustScore(a) {
+  const avg = Number(a?.avg || 0);
+  const n = Number(a?.review_count || 0);
+  if (avg <= 0 || n <= 0) return 0;
+  const priorMean = 4.2;
+  const priorWeight = 8;
+  return ((avg * n) + (priorMean * priorWeight)) / (n + priorWeight);
+}
+
+function isAannemerVerified(a) {
+  return a?.abonnement === 'pro' || a?.abonnement === 'business';
+}
+
+function computeTrustScore(avg, reviewCount) {
+  const safeAvg = Number(avg) || 0;
+  const safeCount = Number(reviewCount) || 0;
+  if (safeAvg <= 0 || safeCount <= 0) return 0;
+  const priorMean = 4.0;
+  const priorWeight = 8;
+  return ((safeAvg * safeCount) + (priorMean * priorWeight)) / (safeCount + priorWeight);
+}
+
+function getTrustLabel(trustScore, reviewCount) {
+  const t = Number(trustScore) || 0;
+  const c = Number(reviewCount) || 0;
+  if (c < 3) return 'Nieuw profiel';
+  if (t >= 4.6 && c >= 12) return 'Top betrouwbaar';
+  if (t >= 4.2 && c >= 5) return 'Sterk beoordeeld';
+  return 'Voldoende reviews';
+}
+
 async function loadAannemers() {
   try {
     if (!sb) { renderDemoAannemers(); return; }
@@ -3068,7 +3138,7 @@ async function loadAannemers() {
     if (error) { showToast('Aannemers laden mislukt', true); renderDemoAannemers(); return; }
     const { data: reviewsData, error: reviewsError } = await sb
       .from('reviews')
-      .select('aannemer_id,score_kwaliteit,score_communicatie,score_prijs_kwaliteit,score_tijdigheid,score_netheid,tekst,aangemaakt');
+      .select('aannemer_id,reviewer_type,score_kwaliteit,score_communicatie,score_prijs_kwaliteit,score_tijdigheid,score_netheid,tekst,aangemaakt');
     if (reviewsError) console.warn('Reviews laden voor aannemers mislukt:', reviewsError);
     const reviewsByAannemer = {};
     (reviewsData || []).forEach(r => {
@@ -3079,10 +3149,39 @@ async function loadAannemers() {
     // Bereken gemiddelden per aannemer
     allAannemers = (data || []).map(a => {
       const revs = reviewsByAannemer[a.id] || [];
-      if (revs.length === 0) return { ...a, avg: 0, avg_kwaliteit: 0, avg_communicatie: 0, avg_prijs_kwaliteit: 0, avg_tijdigheid: 0, avg_netheid: 0, review_count: 0 };
+      if (revs.length === 0) {
+        const trustScore = 0;
+        return {
+          ...a,
+          avg: 0,
+          avg_kwaliteit: 0,
+          avg_communicatie: 0,
+          avg_prijs_kwaliteit: 0,
+          avg_tijdigheid: 0,
+          avg_netheid: 0,
+          review_count: 0,
+          trust_score: trustScore,
+          trust_label: getTrustLabel(trustScore, 0),
+          is_verified: isAannemerVerified(a),
+        };
+      }
       const avg = k => revs.reduce((s,r) => s + (r[k]||0), 0) / revs.length;
       const totaal = (avg('score_kwaliteit') + avg('score_communicatie') + avg('score_prijs_kwaliteit') + avg('score_tijdigheid') + avg('score_netheid')) / 5;
-      return { ...a, reviews: revs, avg: totaal, avg_kwaliteit: avg('score_kwaliteit'), avg_communicatie: avg('score_communicatie'), avg_prijs_kwaliteit: avg('score_prijs_kwaliteit'), avg_tijdigheid: avg('score_tijdigheid'), avg_netheid: avg('score_netheid'), review_count: revs.length };
+      const trustScore = computeTrustScore(totaal, revs.length);
+      return {
+        ...a,
+        reviews: revs,
+        avg: totaal,
+        avg_kwaliteit: avg('score_kwaliteit'),
+        avg_communicatie: avg('score_communicatie'),
+        avg_prijs_kwaliteit: avg('score_prijs_kwaliteit'),
+        avg_tijdigheid: avg('score_tijdigheid'),
+        avg_netheid: avg('score_netheid'),
+        review_count: revs.length,
+        trust_score: trustScore,
+        trust_label: getTrustLabel(trustScore, revs.length),
+        is_verified: isAannemerVerified(a),
+      };
     });
     // Stats
     const totalRevs = allAannemers.reduce((s,a) => s + a.review_count, 0);
@@ -3158,13 +3257,34 @@ function applyAnFilters() {
       if (a.lat && a.lng) return haversineKm(anFilterState.lat, anFilterState.lng, a.lat, a.lng) <= anFilterState.radius;
       const sc = getStadCoords(a.stad||'');
       if (sc) return haversineKm(anFilterState.lat, anFilterState.lng, sc.lat, sc.lng) <= anFilterState.radius;
-      return true;
+      return false;
     });
   }
   // Sortering
-  if (anFilterState.sorteer === 'score') lijst.sort((a,b) => b.avg - a.avg);
-  else if (anFilterState.sorteer === 'reviews') lijst.sort((a,b) => b.review_count - a.review_count);
-  else lijst.sort((a,b) => (a.bedrijfsnaam||'').localeCompare(b.bedrijfsnaam||''));
+  if (anFilterState.sorteer === 'score') {
+    lijst.sort((a,b) => (b.trust_score || b.avg || 0) - (a.trust_score || a.avg || 0));
+  } else if (anFilterState.sorteer === 'reviews') {
+    lijst.sort((a,b) => b.review_count - a.review_count);
+  } else if (anFilterState.sorteer === 'local') {
+    lijst.sort((a,b) => {
+      const ac = getStadCoords(a.stad || '');
+      const bc = getStadCoords(b.stad || '');
+      const ad = (anFilterState.lat !== null && anFilterState.lng !== null && ac)
+        ? haversineKm(anFilterState.lat, anFilterState.lng, ac.lat, ac.lng)
+        : Number.POSITIVE_INFINITY;
+      const bd = (anFilterState.lat !== null && anFilterState.lng !== null && bc)
+        ? haversineKm(anFilterState.lat, anFilterState.lng, bc.lat, bc.lng)
+        : Number.POSITIVE_INFINITY;
+      const adNorm = Number.isFinite(ad) ? Math.min(ad, 80) / 80 : 1;
+      const bdNorm = Number.isFinite(bd) ? Math.min(bd, 80) / 80 : 1;
+      const as = (a.trust_score || a.avg || 0) * 0.75 + (1 - adNorm) * 0.25;
+      const bs = (b.trust_score || b.avg || 0) * 0.75 + (1 - bdNorm) * 0.25;
+      if (bs !== as) return bs - as;
+      return (b.review_count || 0) - (a.review_count || 0);
+    });
+  } else {
+    lijst.sort((a,b) => (a.bedrijfsnaam||'').localeCompare(b.bedrijfsnaam||''));
+  }
 
   filteredAannemers = lijst;
   renderAannemers(lijst);
@@ -3196,7 +3316,14 @@ function buildAnnemerCard(a) {
     : ini;
   const score = a.avg > 0 ? a.avg.toFixed(1) : '—';
   const stars = a.avg > 0 ? renderStarsMini(a.avg) : '<span style="font-size:12px;color:var(--gray-text);">Nog geen reviews</span>';
-  const isPro = a.abonnement === 'pro' || a.abonnement === 'business';
+  const trustScore = a.trust_score || computeTrustScore(a.avg || 0, a.review_count || 0);
+  const trustLabel = a.trust_label || getTrustLabel(trustScore, a.review_count || 0);
+  const isPro = a.is_verified || isAannemerVerified(a);
+  const cityCoords = getStadCoords(a.stad || '');
+  const hasGeoRef = anFilterState.lat !== null && anFilterState.lng !== null && cityCoords;
+  const distanceLabel = hasGeoRef
+    ? `${Math.round(haversineKm(anFilterState.lat, anFilterState.lng, cityCoords.lat, cityCoords.lng))} km afstand`
+    : '';
   return `
   <div class="con-card" onclick="openAannemerProfiel('${a.id}')" style="cursor:pointer;">
     <div class="con-top">
@@ -3208,6 +3335,12 @@ function buildAnnemerCard(a) {
     <div class="stars-row">
       ${stars}
       ${a.avg > 0 ? `<span class="str-sc">${score}</span><span class="str-ct">(${a.review_count} review${a.review_count!==1?'s':''})</span>` : ''}
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;">
+      <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:100px;background:rgba(46,95,190,.08);border:1px solid rgba(46,95,190,.16);font-size:11px;font-weight:700;color:var(--blue-light);">
+        <i data-lucide="shield-check" style="width:12px;height:12px;"></i>${escHtml(trustLabel)} · ${trustScore > 0 ? trustScore.toFixed(1) : '—'}
+      </span>
+      ${distanceLabel ? `<span style="font-size:11px;color:var(--gray-text);white-space:nowrap;">${distanceLabel}</span>` : ''}
     </div>
     <div class="specs"><span class="spec">${escHtml((a.specialisme||'Algemeen').split('&')[0].trim())}</span></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-border);">
@@ -3347,12 +3480,14 @@ function resetAnFilters() {
   anFilterState.specialismen = new Set(['Badkamer','Keuken','Dak','Aanbouw','Elektra','Schilderwerk','Vloeren','Algemeen']);
   anFilterState.minScore = 0;
   anFilterState.minReviews = 0;
+  anFilterState.sorteer = 'score';
   anFilterState.lat = null; anFilterState.lng = null; anFilterState.radius = 25;
   document.querySelectorAll('.an-spec-cb').forEach(cb => cb.checked = true);
   document.querySelector('input[name="an-minscore"][value="0"]').checked = true;
   document.getElementById('an-min-reviews').value = '0';
   document.getElementById('anSrchInput').value = '';
   document.getElementById('an-regio-input').value = '';
+  document.getElementById('an-sort').value = 'score';
   document.getElementById('an-radius-wrap').style.display = 'none';
   document.getElementById('an-regio-status').textContent = '';
   document.querySelectorAll('.city-chip').forEach(c => c.classList.remove('active'));
@@ -3395,6 +3530,10 @@ function onAnRegioInput() {
       anFilterState.lat = coords.lat; anFilterState.lng = coords.lng;
       document.getElementById('an-regio-status').textContent = '✅ ' + (coords.naam||query);
       document.getElementById('an-radius-wrap').style.display = 'block';
+      if (anFilterState.sorteer === 'score') {
+        anFilterState.sorteer = 'local';
+        document.getElementById('an-sort').value = 'local';
+      }
       applyAnFilters();
     } else {
       anFilterState.lat = null; anFilterState.lng = null;
@@ -3843,7 +3982,8 @@ function updateNavFoto() {
     <select class="sort-sel" id="an-sort" onchange="onAnSortChange(this.value)">
       <option value="score">Beste beoordeeld</option>
       <option value="reviews">Meeste reviews</option>
-      <option value="naam">Naam A–Z</option>
+      <option value="local">Beste match in regio</option>
+      <option value="naam">Naam A-Z</option>
     </select>
     <div class="tb-right">
       <span class="res-ct"><strong id="anVisCt">—</strong> aannemers</span>
