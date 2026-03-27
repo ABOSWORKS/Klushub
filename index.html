@@ -455,6 +455,15 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--blue-dark);color:var(--white);padding:13px 22px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.2);transition:transform .35s cubic-bezier(.34,1.56,.64,1);z-index:2000;white-space:nowrap}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .toast.err{background:#DC2626}
+.dev-analytics{position:fixed;right:16px;bottom:16px;z-index:2200;background:rgba(11,31,74,.96);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;min-width:280px;max-width:360px;box-shadow:0 14px 32px rgba(0,0,0,.35);font-size:12px;line-height:1.4;display:none}
+.dev-analytics.open{display:block}
+.dev-analytics .da-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.dev-analytics .da-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:.2px}
+.dev-analytics .da-close{background:transparent;border:none;color:#fff;opacity:.75;cursor:pointer;font-size:16px;line-height:1}
+.dev-analytics .da-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+.dev-analytics .da-k{opacity:.72}
+.dev-analytics .da-v{font-weight:700;text-align:right}
+.dev-analytics .da-foot{margin-top:8px;opacity:.7;font-size:11px}
 
 /* ── CONFIG BANNER ───────────────────────────── */
 .config-banner{background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:12px 5vw;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:#92400E;position:fixed;top:72px;left:0;right:0;z-index:250}
@@ -1230,6 +1239,14 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="dev-analytics" id="devAnalytics">
+  <div class="da-head">
+    <div class="da-title">Dev Analytics</div>
+    <button class="da-close" onclick="toggleDevAnalytics(false)">x</button>
+  </div>
+  <div class="da-grid" id="devAnalyticsGrid"></div>
+  <div class="da-foot">Toggle: Ctrl+Shift+D</div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════
      JAVASCRIPT — Supabase + alle logica
@@ -1319,6 +1336,71 @@ function trackEvent(name, props = {}) {
     window[EVENT_QUEUE_KEY].splice(0, window[EVENT_QUEUE_KEY].length - MAX_EVENT_QUEUE_SIZE);
   }
   if (window.__KLUSHUB_DEBUG_TRACKING) console.log('[trackEvent]', event);
+}
+
+const DEV_ANALYTICS_STORAGE_KEY = 'klushub_dev_analytics';
+let devAnalyticsTimer = null;
+
+function isDevAnalyticsEnabled() {
+  try {
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get('debug') === '1' || qs.get('analytics') === '1') return true;
+    return localStorage.getItem(DEV_ANALYTICS_STORAGE_KEY) === '1';
+  } catch (err) {
+    return false;
+  }
+}
+
+function calcRate(success, total) {
+  if (!total) return '0.0%';
+  return `${((success / total) * 100).toFixed(1)}%`;
+}
+
+function renderDevAnalytics() {
+  const panel = document.getElementById('devAnalytics');
+  const grid = document.getElementById('devAnalyticsGrid');
+  if (!panel || !grid || !panel.classList.contains('open')) return;
+  const events = Array.isArray(window[EVENT_QUEUE_KEY]) ? window[EVENT_QUEUE_KEY] : [];
+  const count = (name) => events.filter(e => e && e.name === name).length;
+  const klussenOk = count('klus_publish_succeeded');
+  const klussenStart = count('klus_publish_started');
+  const aanbodOk = count('aanbieding_submit_succeeded');
+  const aanbodStart = count('aanbieding_submit_started');
+  const reviewOk = count('review_submit_succeeded');
+  const reviewStart = count('review_submit_started');
+  const mailOk = count('email_chain_succeeded');
+  const mailStart = count('email_chain_started');
+  const klussenLoadOk = count('klussen_load_succeeded');
+  const klussenLoadStart = count('klussen_load_started');
+
+  const rows = [
+    ['Events totaal', String(events.length)],
+    ['Page views', String(count('page_view'))],
+    ['Klus submit rate', calcRate(klussenOk, klussenStart)],
+    ['Aanbieding rate', calcRate(aanbodOk, aanbodStart)],
+    ['Review rate', calcRate(reviewOk, reviewStart)],
+    ['Email chain rate', calcRate(mailOk, mailStart)],
+    ['Klussen load rate', calcRate(klussenLoadOk, klussenLoadStart)],
+    ['Publish fails', String(count('klus_publish_failed'))],
+    ['Aanbod fails', String(count('aanbieding_submit_failed'))],
+  ];
+  grid.innerHTML = rows.map(([k, v]) => `<div class="da-k">${k}</div><div class="da-v">${v}</div>`).join('');
+}
+
+function startDevAnalyticsLoop() {
+  if (devAnalyticsTimer) clearInterval(devAnalyticsTimer);
+  devAnalyticsTimer = setInterval(renderDevAnalytics, 1000);
+}
+
+function toggleDevAnalytics(forceOpen) {
+  const panel = document.getElementById('devAnalytics');
+  if (!panel) return;
+  const nextOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('open');
+  panel.classList.toggle('open', nextOpen);
+  try {
+    localStorage.setItem(DEV_ANALYTICS_STORAGE_KEY, nextOpen ? '1' : '0');
+  } catch (err) {}
+  if (nextOpen) renderDevAnalytics();
 }
 
 function getCatIcon(typeStr) {
@@ -3433,6 +3515,11 @@ function timeSince(iso){
 // 14. KEYBOARD + INIT
 // ══════════════════════════════════════════════════
 document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+    e.preventDefault();
+    toggleDevAnalytics();
+    return;
+  }
   if (e.key==='Escape') { closeModal(); closeAuth(); closeLock(); closeMijnKlussen(); closeEditKlus(); closeDropdown(); closeGeplaatsteKlussen(); closeKlantBeheer(); closeBevestiging(); closeReviewModal(); closeAannemerProfiel(); }
 });
 
@@ -4364,6 +4451,8 @@ function updateNavFoto() {
   initReveal();
   initKlusPostcodeAutofill();
   updateNavAuth();
+  startDevAnalyticsLoop();
+  if (isDevAnalyticsEnabled()) toggleDevAnalytics(true);
   if (!ok) renderDemoKlussen();
   if (window.lucide) lucide.createIcons();
 
