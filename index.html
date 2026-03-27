@@ -1787,14 +1787,28 @@ async function loadKlussen(reset = true) {
 
     try {
       void archiveerVerlopenKlussen().catch(err => console.warn('Archiveren op achtergrond mislukt:', err));
-      const query = sb
+      const buildKlusQuery = (columns) => sb
         .from('klussen')
-        .select(KLUS_LIST_COLUMNS)
+        .select(columns)
         .eq('status', 'open')
         .order('aangemaakt', { ascending: false })
         .range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
 
-      const { data, error } = await withTimeout(query, getKlusLoadTimeoutMs(), 'Klussen laden');
+      let data = null;
+      let error = null;
+      ({ data, error } = await withTimeout(buildKlusQuery(KLUS_LIST_COLUMNS), getKlusLoadTimeoutMs(), 'Klussen laden'));
+      if (error) {
+        const msg = String(error?.message || '').toLowerCase();
+        const looksLikeColumnMismatch =
+          msg.includes('column') ||
+          msg.includes('schema cache') ||
+          msg.includes('could not find') ||
+          msg.includes('does not exist');
+        if (looksLikeColumnMismatch) {
+          console.warn('Kolom mismatch bij snelle klussen-query, fallback naar select(*)', error);
+          ({ data, error } = await withTimeout(buildKlusQuery('*'), getKlusLoadTimeoutMs(), 'Klussen laden (fallback)'));
+        }
+      }
       if (error) throw error;
 
       const loadedKlussen = data || [];
@@ -1817,14 +1831,19 @@ async function loadKlussen(reset = true) {
       return true;
     } catch (err) {
       const errMsg = String(err?.message || err || 'unknown');
+      const isTimeout = errMsg.toLowerCase().includes('timeout');
       trackEvent('klussen_load_failed', {
         reset,
         reason: errMsg,
-        timeout: errMsg.toLowerCase().includes('timeout'),
+        timeout: isTimeout,
         duration_ms: Date.now() - loadStartedAt,
       });
       console.warn('Klussen laden mislukt, fallback volgt:', err);
-      showToast('Klussen laden duurt te lang. Demo-klussen worden tijdelijk getoond.', true);
+      if (isTimeout) {
+        showToast('Klussen laden duurt te lang. Demo-klussen worden tijdelijk getoond.', true);
+      } else {
+        showToast('Live klussen laden mislukt. Tijdelijk tonen we demo-klussen.', true);
+      }
       if (reset || !allKlussen.length) {
         klussensOffset = 0;
         allKlussen = [];
