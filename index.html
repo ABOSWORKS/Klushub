@@ -1255,6 +1255,11 @@ const KLUS_PUBLISH_TIMEOUT_MS = 15000;
 const KLUS_LOAD_TIMEOUT_MS = 12000;
 const PUBLISH_BUTTON_HTML = '<span>Klus publiceren</span><span>→</span>';
 const EMAIL_CHAIN_FUNCTION = 'resend-email';
+const AANBIEDING_TIMEOUT_MS = 12000;
+let klusPublishInFlight = false;
+let klussenLoadPromise = null;
+let lastArchiveRunAt = 0;
+const ARCHIVE_THROTTLE_MS = 180000;
 
 // ─── Filter state ──────────────────────────────
 const filterState = {
@@ -1419,6 +1424,9 @@ function closeDropdown() { document.getElementById('nav-dropdown').style.display
 // Archiveer verlopen klussen (deadline voorbij) — roept Supabase aan
 async function archiveerVerlopenKlussen() {
   if (!sb) return;
+  const now = Date.now();
+  if (now - lastArchiveRunAt < ARCHIVE_THROTTLE_MS) return;
+  lastArchiveRunAt = now;
   const vandaag = new Date().toISOString().split('T')[0];
   await sb
     .from('klussen')
@@ -1433,63 +1441,63 @@ async function loadKlussen(reset = true) {
     setLoadMoreVisibility(false);
     return false;
   }
-
-  if (reset) {
-    klussensOffset = 0;
-    allKlussen = [];
-    const cardsList = document.getElementById('cardsList');
-    if (cardsList) {
-      cardsList.innerHTML = `
-        <div style="text-align:center;padding:60px 20px;color:var(--gray-text)">
-          <div style="margin-bottom:12px"><i data-lucide="hourglass" style="width:32px;height:32px;opacity:0.6"></i></div>
-          <div style="font-size:16px;font-weight:600">Klussen worden geladen...</div>
-        </div>`;
-      if (window.lucide) lucide.createIcons();
-    }
-  }
-  setLoadMoreVisibility(false);
-
-  try {
-    // Archiveer eerst verlopen klussen
-    await withTimeout(archiveerVerlopenKlussen(), getKlusLoadTimeoutMs(), 'Klussen archiveren');
-
-  // Haal open klussen op — altijd gesorteerd op nieuwste eerst als basis
-    const query = sb
-      .from('klussen')
-      .select('*', { count: 'exact' })
-      .eq('status', 'open')
-      .order('aangemaakt', { ascending: false })
-      .range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
-
-    const { data, count, error } = await withTimeout(query, getKlusLoadTimeoutMs(), 'Klussen laden');
-    if (error) throw error;
-
-    const loadedKlussen = data || [];
-    allKlussen = reset ? loadedKlussen : [...allKlussen, ...loadedKlussen];
-    klussensOffset += loadedKlussen.length;
-
-    const khOpen = document.getElementById('kh-open');
-    if (khOpen) khOpen.textContent = typeof count === 'number' ? count : allKlussen.length;
-
-    // Pas client-side filters toe
-    applyFilters();
-
-    const hasMore = typeof count === 'number' ? count > klussensOffset : loadedKlussen.length === PAGE_SIZE;
-    setLoadMoreVisibility(hasMore);
-    return true;
-  } catch (err) {
-    console.warn('Klussen laden mislukt, fallback volgt:', err);
-    showToast('Klussen laden duurt te lang. Demo-klussen worden tijdelijk getoond.', true);
-    if (reset || !allKlussen.length) {
+  if (klussenLoadPromise) return klussenLoadPromise;
+  klussenLoadPromise = (async () => {
+    if (reset) {
       klussensOffset = 0;
       allKlussen = [];
-      renderDemoKlussen();
-    } else {
-      applyFilters();
+      const cardsList = document.getElementById('cardsList');
+      if (cardsList) {
+        cardsList.innerHTML = `
+          <div style="text-align:center;padding:60px 20px;color:var(--gray-text)">
+            <div style="margin-bottom:12px"><i data-lucide="hourglass" style="width:32px;height:32px;opacity:0.6"></i></div>
+            <div style="font-size:16px;font-weight:600">Klussen worden geladen...</div>
+          </div>`;
+        if (window.lucide) lucide.createIcons();
+      }
     }
     setLoadMoreVisibility(false);
-    return false;
-  }
+
+    try {
+      await withTimeout(archiveerVerlopenKlussen(), getKlusLoadTimeoutMs(), 'Klussen archiveren');
+      const query = sb
+        .from('klussen')
+        .select('*', { count: 'exact' })
+        .eq('status', 'open')
+        .order('aangemaakt', { ascending: false })
+        .range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
+
+      const { data, count, error } = await withTimeout(query, getKlusLoadTimeoutMs(), 'Klussen laden');
+      if (error) throw error;
+
+      const loadedKlussen = data || [];
+      allKlussen = reset ? loadedKlussen : [...allKlussen, ...loadedKlussen];
+      klussensOffset += loadedKlussen.length;
+
+      const khOpen = document.getElementById('kh-open');
+      if (khOpen) khOpen.textContent = typeof count === 'number' ? count : allKlussen.length;
+
+      applyFilters();
+      const hasMore = typeof count === 'number' ? count > klussensOffset : loadedKlussen.length === PAGE_SIZE;
+      setLoadMoreVisibility(hasMore);
+      return true;
+    } catch (err) {
+      console.warn('Klussen laden mislukt, fallback volgt:', err);
+      showToast('Klussen laden duurt te lang. Demo-klussen worden tijdelijk getoond.', true);
+      if (reset || !allKlussen.length) {
+        klussensOffset = 0;
+        allKlussen = [];
+        renderDemoKlussen();
+      } else {
+        applyFilters();
+      }
+      setLoadMoreVisibility(false);
+      return false;
+    } finally {
+      klussenLoadPromise = null;
+    }
+  })();
+  return klussenLoadPromise;
 }
 
 async function loadMore() {
@@ -2118,6 +2126,11 @@ async function submitFullForm() {
 // ⚠️ Als je dit verandert, verdwijnt de groene bevestigingsmodal!
 // ⚠️ Test ALTIJD: 1) Vul formulier, 2) Klik "Publiceren", 3) Controleer modal verschijnt
 async function insertKlus(payload, btnId) {
+  if (klusPublishInFlight) {
+    showToast('<i data-lucide="hourglass" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Publicatie wordt nog verwerkt. Even geduldâ€¦', true);
+    return;
+  }
+  klusPublishInFlight = true;
   const btn = document.getElementById(btnId);
   if (btn) {
     btn.disabled = true;
@@ -2134,12 +2147,24 @@ async function insertKlus(payload, btnId) {
     const beheerToken = hasSecureUuid
       ? window.crypto.randomUUID()
       : `beheer-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
-    payload.beheer_token = beheerToken;
-    const { data, error } = await withTimeout(
-      sb.from('klussen').insert(payload).select('id').single(),
-      getKlusPublishTimeoutMs(),
-      'Klus publiceren'
-    );
+    const payloadToInsert = { ...payload, beheer_token: beheerToken };
+    let publishResult = null;
+    try {
+      publishResult = await withTimeout(
+        sb.from('klussen').insert(payloadToInsert).select('id').single(),
+        getKlusPublishTimeoutMs(),
+        'Klus publiceren'
+      );
+    } catch (firstErr) {
+      const firstMsg = String(firstErr?.message || '').toLowerCase();
+      if (!firstMsg.includes('timeout')) throw firstErr;
+      publishResult = await withTimeout(
+        sb.from('klussen').insert(payloadToInsert).select('id').single(),
+        Math.max(getKlusPublishTimeoutMs(), 22000),
+        'Klus publiceren (herkansing)'
+      );
+    }
+    const { data, error } = publishResult || {};
     if (error) {
       showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true);
       return;
@@ -2164,6 +2189,7 @@ async function insertKlus(payload, btnId) {
       showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Publiceren mislukt: ' + msg, true);
     }
   } finally {
+    klusPublishInFlight = false;
     resetPublishButtons();
   }
 }
@@ -2896,21 +2922,86 @@ async function submitAanbieding() {
   const bericht  = document.getElementById('m-bericht').value.trim();
   if (!prijs) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul een prijs in', true); return; }
   const btn = document.getElementById('m-send-btn');
+  const klusIdSnapshot = currentKlusId;
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-  if (!sb || !currentKlusId || currentKlusId.startsWith('demo')) {
-    await new Promise(r => setTimeout(r, 700));
-    btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
-    closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)'); return;
+  try {
+    if (!sb || !klusIdSnapshot || klusIdSnapshot.startsWith('demo')) {
+      await new Promise(r => setTimeout(r, 700));
+      closeModal();
+      showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)');
+      return;
+    }
+    const { error } = await withTimeout(
+      sb.from('aanbiedingen').insert({ klus_id: klusIdSnapshot, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht }),
+      AANBIEDING_TIMEOUT_MS,
+      'Aanbieding versturen'
+    );
+    if (error) {
+      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
+      return;
+    }
+    closeModal();
+    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!');
+  } catch (err) {
+    const msg = String(err?.message || err || 'Onbekende fout');
+    if (msg.toLowerCase().includes('timeout')) {
+      showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding duurt te lang. Probeer opnieuw.', true);
+    } else {
+      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + msg, true);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Aanbieding versturen ✓';
   }
-  const { error } = await sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht });
-  btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
-  if (error) showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
-  else { closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!'); }
 }
 
 // ══════════════════════════════════════════════════
 // 10. AUTH MODALS
 // ══════════════════════════════════════════════════
+// Veilige variant overschrijft submitAanbieding met timeout/finally-reset tegen vastlopende spinner.
+submitAanbieding = async function submitAanbiedingSafe() {
+  const prijs   = document.getElementById('m-prijs').value.replace(/[^0-9]/g,'');
+  const doorloop = document.getElementById('m-doorloop').value.trim();
+  const bericht  = document.getElementById('m-bericht').value.trim();
+  if (!prijs) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul een prijs in', true); return; }
+  const btn = document.getElementById('m-send-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    if (!sb || !currentKlusId || currentKlusId.startsWith('demo')) {
+      await new Promise(r => setTimeout(r, 700));
+      closeModal();
+      showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)');
+      return;
+    }
+    if (!currentUser || !currentUser.id) {
+      showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Je sessie is verlopen. Log opnieuw in.', true);
+      openAuth('login');
+      return;
+    }
+    const { error } = await withTimeout(
+      sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht }),
+      AANBIEDING_TIMEOUT_MS,
+      'Aanbieding versturen'
+    );
+    if (error) {
+      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
+      return;
+    }
+    closeModal();
+    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!');
+  } catch (err) {
+    const msg = err && err.message ? err.message : 'Onbekende fout';
+    if (msg.toLowerCase().includes('timeout')) {
+      showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding duurt te lang. Controleer je verbinding en probeer opnieuw.', true);
+    } else {
+      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + msg, true);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Aanbieding versturen âœ“';
+  }
+};
+
 function openAuth(tab) { document.getElementById('authOverlay').classList.add('open'); document.body.style.overflow = 'hidden'; switchAuthTab(tab||'login'); }
 function closeAuth()   { document.getElementById('authOverlay').classList.remove('open'); document.body.style.overflow = ''; }
 function switchAuthTab(tab) {
