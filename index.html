@@ -1594,6 +1594,24 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
   const fnName = String(window.__KLUSHUB_EMAIL_FUNCTION || EMAIL_CHAIN_FUNCTION).trim();
   if (!fnName) return;
   const functionUrl = `${String(SUPABASE_URL || '').replace(/\/$/, '')}/functions/v1/${encodeURIComponent(fnName)}`;
+  const sessionToken = sb?.auth?.getSession ? (await sb.auth.getSession())?.data?.session?.access_token : null;
+  const authToken = sessionToken || SUPABASE_ANON;
+  const hasJwtLikeToken = typeof authToken === 'string' && authToken.split('.').length === 3;
+  trackEvent('email_chain_auth_context', {
+    klus_id: klusId,
+    auth_mode: sessionToken ? 'session_token' : 'anon_token',
+    jwt_like: hasJwtLikeToken,
+    function_url: functionUrl,
+  });
+  if (!hasJwtLikeToken) {
+    trackEvent('email_chain_failed', {
+      klus_id: klusId,
+      function_name: fnName,
+      reason: 'invalid_auth_token_format',
+    });
+    showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus geplaatst, maar e-mailauth-token is ongeldig geconfigureerd.', true);
+    return;
+  }
   const warnEmailFailure = (message) => {
     const now = Date.now();
     if (now - lastEmailChainWarningAt < 5000) return;
@@ -1607,7 +1625,7 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
         headers: {
           'Content-Type': 'application/json',
           apikey: SUPABASE_ANON,
-          Authorization: `Bearer ${SUPABASE_ANON}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           klus_id: klusId,
@@ -1759,6 +1777,19 @@ async function updateOpenKlussenCount() {
   }
 }
 
+function renderKlussenLoadErrorState(message) {
+  const cardsList = document.getElementById('cardsList');
+  if (!cardsList) return;
+  cardsList.innerHTML = `
+    <div style="text-align:center;padding:56px 20px;color:var(--gray-text)">
+      <div style="margin-bottom:12px"><i data-lucide="alert-triangle" style="width:34px;height:34px;opacity:.7"></i></div>
+      <div style="font-size:16px;font-weight:700;color:var(--text-dark);margin-bottom:8px">Live klussen tijdelijk niet beschikbaar</div>
+      <p style="font-size:14px;max-width:480px;margin:0 auto 14px;">${escHtml(message || 'Er ging iets mis bij het laden van live klussen.')}</p>
+      <button class="btn-p" style="font-size:14px;padding:10px 20px;" onclick="loadKlussen(true)">Opnieuw proberen</button>
+    </div>`;
+  if (window.lucide) lucide.createIcons();
+}
+
 async function loadKlussen(reset = true) {
   const loadStartedAt = Date.now();
   trackEvent('klussen_load_started', { reset, offset: klussensOffset });
@@ -1850,25 +1881,50 @@ async function loadKlussen(reset = true) {
     } catch (err) {
       const errMsg = String(err?.message || err || 'unknown');
       const isTimeout = errMsg.toLowerCase().includes('timeout');
+      let rescueData = null;
+      let rescueError = null;
+      try {
+        const rescueQuery = sb
+          .from('klussen')
+          .select('id,type,omschrijving,stad,postcode,budget,deadline,status,aangemaakt,created_at')
+          .eq('status', 'open')
+          .limit(24);
+        const rescueResult = await withTimeout(rescueQuery, 3500, 'Klussen rescue query');
+        rescueData = (rescueResult?.data || []).map(k => ({
+          ...k,
+          aangemaakt: k?.aangemaakt || k?.created_at || null,
+        }));
+        rescueError = rescueResult?.error || null;
+      } catch (rescueErr) {
+        rescueError = rescueErr;
+      }
       trackEvent('klussen_load_failed', {
         reset,
         reason: errMsg,
         timeout: isTimeout,
+        rescue_ok: Array.isArray(rescueData) && rescueData.length > 0 && !rescueError,
         duration_ms: Date.now() - loadStartedAt,
       });
       console.warn('Klussen laden mislukt, fallback volgt:', err);
+      if (Array.isArray(rescueData) && rescueData.length > 0 && !rescueError) {
+        allKlussen = reset ? rescueData : [...allKlussen, ...rescueData];
+        klussensOffset = allKlussen.length;
+        try {
+          applyFilters();
+        } catch (renderErr) {
+          filteredKlussen = [...allKlussen];
+          renderKlussen(allKlussen);
+        }
+        showToast('Live klussen geladen via herstelpad.', true);
+        return true;
+      }
       if (isTimeout) {
-        showToast('Klussen laden duurt te lang. Demo-klussen worden tijdelijk getoond.', true);
+        showToast('Klussen laden duurt te lang. Probeer opnieuw.', true);
       } else {
-        showToast('Live klussen laden mislukt. Tijdelijk tonen we demo-klussen.', true);
+        showToast('Live klussen laden mislukt. Probeer opnieuw.', true);
       }
-      if (reset || !allKlussen.length) {
-        klussensOffset = 0;
-        allKlussen = [];
-        renderDemoKlussen();
-      } else {
-        applyFilters();
-      }
+      if (allKlussen.length > 0) applyFilters();
+      else renderKlussenLoadErrorState('Controleer je verbinding en probeer opnieuw.');
       setLoadMoreVisibility(false);
       return false;
     } finally {
