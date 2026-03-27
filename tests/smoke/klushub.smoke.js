@@ -219,6 +219,39 @@ async function run() {
   const fullStadAfterInvalid = await page.locator('#full-stad').inputValue();
   assert(fullStadAfterInvalid.trim() === '', `Stad blijft stale na ongeldige postcode: ${fullStadAfterInvalid}`);
 
+  const publishTimeoutGuard = await page.evaluate(async () => {
+    try {
+      window.__KLUSHUB_PUBLISH_TIMEOUT_MS = 200;
+      sb = {
+        from: () => ({
+          insert: () => ({
+            select: () => ({
+              single: () => new Promise(() => {}),
+            }),
+          }),
+        }),
+      };
+      document.getElementById('hf-omschrijving').value = 'Timeout test klus';
+      document.getElementById('hf-postcode').value = '1234 AB';
+      document.getElementById('hf-email').value = 'timeout@test.nl';
+      document.getElementById('hf-budget').value = '1500';
+      await doHeroSubmit();
+      const btn = document.getElementById('hf-btn');
+      return {
+        ok: true,
+        disabled: !!btn && btn.disabled,
+        text: btn ? btn.textContent.trim() : '',
+      };
+    } catch (e) {
+      return { ok: false, err: String(e) };
+    } finally {
+      window.__KLUSHUB_PUBLISH_TIMEOUT_MS = 0;
+    }
+  });
+  assert(publishTimeoutGuard.ok, `Publish timeout guard crashed: ${publishTimeoutGuard.err || 'unknown'}`);
+  assert(!publishTimeoutGuard.disabled, 'Publish timeout guard faalde: knop blijft disabled');
+  assert(/Klus publiceren/i.test(publishTimeoutGuard.text), `Publish timeout guard faalde: knoptekst niet hersteld (${publishTimeoutGuard.text})`);
+
   assert(pageErrors.length === 0, `Onverwachte page errors: ${pageErrors.join(' | ')}`);
 
   await browser.close();
