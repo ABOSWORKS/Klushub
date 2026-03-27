@@ -592,7 +592,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
     <li><a onclick="goLanding('#hoe')">Hoe werkt het</a></li>
     <li><a onclick="showPage('klussen');switchP('klussen')">Openstaande klussen</a></li>
     <li><a onclick="showPage('aannemers')">Aannemers</a></li>
-    <li><a onclick="goLanding('#reviews')">Reviews</a></li>
+    <li><a onclick="showPage('reviews')">Reviews</a></li>
     <li><a onclick="goLanding('#prijzen')">Prijzen</a></li>
     <li><a onclick="showPage('faq')">FAQ &amp; Handleidingen</a></li>
   </ul>
@@ -757,7 +757,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
     <div class="sl">Beoordelingssysteem</div>
     <div class="st">Beoordeel op<br><span>vijf criteria</span></div>
     <p class="ss">Na elke klus scoort de klant de aannemer op vijf onderdelen. Zo weet je precies waar iemand sterk in is.</p>
-    <button class="btn-p" onclick="goLanding('#reviews')">Lees meer reviews →</button>
+    <button class="btn-p" onclick="showPage('reviews')">Lees meer reviews →</button>
   </div>
   <div class="score-widget reveal">
     <div class="score-top"><div class="big-score">4.8</div><div><div class="score-stars-big"><span class="str">★</span><span class="str">★</span><span class="str">★</span><span class="str">★</span><span class="str">★</span></div><div class="score-total" style="margin-top:4px">Gebaseerd op 142 reviews</div></div></div>
@@ -791,7 +791,7 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 <footer>
   <div class="foot-top">
     <div><div class="logo" onclick="showPage('landing')"><div class="logo-icon">K</div><span class="logo-text">Klus<span>hub</span></span></div><p class="foot-tag">Verbindt klanten en aannemers via een eerlijk, transparant systeem met betrouwbare reviews.</p></div>
-    <div class="foot-col"><h4>Platform</h4><ul><li><a onclick="goLanding('#hero-top')">Klus plaatsen</a></li><li><a onclick="showPage('klussen');switchP('klussen')">Klussen bekijken</a></li><li><a onclick="goLanding('#reviews')">Reviews</a></li><li><a onclick="goLanding('#hoe')">Hoe werkt het</a></li></ul></div>
+    <div class="foot-col"><h4>Platform</h4><ul><li><a onclick="goLanding('#hero-top')">Klus plaatsen</a></li><li><a onclick="showPage('klussen');switchP('klussen')">Klussen bekijken</a></li><li><a onclick="showPage('reviews')">Reviews</a></li><li><a onclick="goLanding('#hoe')">Hoe werkt het</a></li></ul></div>
     <div class="foot-col"><h4>Aannemers</h4><ul><li><a onclick="openAuth('register')">Aanmelden</a></li><li><a onclick="goLanding('#prijzen')">Prijzen</a></li><li><a>Profiel opbouwen</a></li><li><a>Business tools</a></li></ul></div>
     <div class="foot-col"><h4>Bedrijf</h4><ul><li><a>Over Klushub</a></li><li><a>Contact</a></li><li><a>Pers</a></li><li><a>Vacatures</a></li></ul></div>
   </div>
@@ -801,6 +801,101 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
   </div>
 </footer>
 </div><!-- /page-landing -->
+
+<div id="page-reviews" class="page">
+  <div class="kh">
+    <div class="kh-inner">
+      <div>
+        <div class="breadcrumb"><a onclick="showPage('landing')">Home</a><span>›</span><span>Reviews</span></div>
+        <h1>Echte <em>reviews</em> van Klushub-klanten</h1>
+        <p>Vergelijk aannemers op lokale ervaring, aantoonbare kwaliteit en recente klantfeedback.</p>
+      </div>
+      <div class="kh-stats">
+        <div class="kh-stat"><div class="n" id="rv-total">—</div><div class="l">Reviews totaal</div></div>
+        <div class="kh-stat"><div class="n" id="rv-avg">—</div><div class="l">Gemiddelde score</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="kbody" style="padding-top:24px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:16px;">
+      <div style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;">
+        <div style="font-size:12px;color:var(--gray-text);margin-bottom:4px;">Lokale betrouwbaarheid</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--blue-dark);line-height:1;">92/100</div>
+        <div style="font-size:12px;color:var(--gray-text);margin-top:6px;">Score op basis van geverifieerde jobs + recency.</div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;">
+        <div style="font-size:12px;color:var(--gray-text);margin-bottom:4px;">Geverifieerde reviews</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--blue-dark);line-height:1;">81%</div>
+        <div style="font-size:12px;color:var(--gray-text);margin-top:6px;">Reviews van afgeronde klussen met bevestigde match.</div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;">
+        <div style="font-size:12px;color:var(--gray-text);margin-bottom:4px;">Actieve regio's</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--blue-dark);line-height:1;">35+</div>
+        <div style="font-size:12px;color:var(--gray-text);margin-top:6px;">Steden met consistente reviewdekking.</div>
+      </div>
+    </div>
+    <div id="reviewsPageList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;"></div>
+    <div style="margin-top:16px;background:#fff;border:1px dashed var(--gray-border);border-radius:14px;padding:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:4px;">Nog geen data in productie?</div>
+      <div style="font-size:13px;color:var(--gray-text);line-height:1.5;">Dan toont Klushub tijdelijke mock-reviews, zodat de pagina bruikbaar blijft en de UX niet leeg voelt.</div>
+    </div>
+  </div>
+</div>
+<div id="page-reviews-archived" style="display:none">
+  <div class="kh" style="padding-bottom:0;">
+    <div class="kh-inner">
+      <div>
+        <div class="breadcrumb"><a onclick="showPage('landing')">Home</a><span>›</span><span>Reviews</span></div>
+        <h1>Eerlijke <em>reviews</em> van echte klussen</h1>
+        <p>Zie hoe klanten aannemers beoordelen op kwaliteit, communicatie, prijs/kwaliteit, tijdigheid en netheid.</p>
+      </div>
+      <div class="kh-stats">
+        <div class="kh-stat"><div class="n">4.7</div><div class="l">Gem. score platform</div></div>
+        <div class="kh-stat"><div class="n">87%</div><div class="l">Verified job reviews</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="kbody" style="padding-top:22px;">
+    <div style="display:grid;grid-template-columns:1.2fr .8fr;gap:18px;align-items:start;">
+      <div style="background:#fff;border:1px solid var(--gray-border);border-radius:16px;padding:18px;">
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:var(--text-dark);margin:0 0 12px;">Laatste reviews</h3>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="border:1px solid var(--gray-border);border-radius:12px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;"><strong>Badkamer renovatie · Helmond</strong><span style="color:#16A34A;font-weight:700;">Verified</span></div>
+            <div style="font-size:14px;color:var(--text-dark);margin-bottom:8px;">“Strakke planning, heldere communicatie en top afwerking. Binnen budget gebleven.”</div>
+            <div style="font-size:12px;color:var(--gray-text);">Score 4.8/5 · 3 dagen geleden · Klantreview</div>
+          </div>
+          <div style="border:1px solid var(--gray-border);border-radius:12px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;"><strong>Dakherstel · Eindhoven</strong><span style="color:#16A34A;font-weight:700;">Verified</span></div>
+            <div style="font-size:14px;color:var(--text-dark);margin-bottom:8px;">“Snelle reactie en goede prijs/kwaliteit. Werk netjes opgeleverd.”</div>
+            <div style="font-size:12px;color:var(--gray-text);">Score 4.6/5 · 6 dagen geleden · Klantreview</div>
+          </div>
+          <div style="border:1px solid var(--gray-border);border-radius:12px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;"><strong>Keuken montage · Utrecht</strong><span style="color:#F59E0B;font-weight:700;">Nieuw</span></div>
+            <div style="font-size:14px;color:var(--text-dark);margin-bottom:8px;">“Fijne samenwerking, klein opleverpunt direct opgelost.”</div>
+            <div style="font-size:12px;color:var(--gray-text);">Score 4.4/5 · 1 week geleden · Klantreview</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="background:#fff;border:1px solid var(--gray-border);border-radius:16px;padding:16px;">
+          <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin:0 0 10px;">Review vertrouwensscore</h4>
+          <div style="font-size:13px;color:var(--gray-text);line-height:1.5;">Wij tonen per aannemer hoe betrouwbaar de reviewbasis is op basis van verified jobs, recency en consistentie.</div>
+          <div style="margin-top:12px;background:var(--gray-soft);border-radius:10px;padding:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span>Verified reviews</span><strong>87%</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span>Gemiddelde response</span><strong>4.2u</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span>Herhaalopdrachten</span><strong>31%</strong></div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--gray-border);border-radius:16px;padding:16px;">
+          <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin:0 0 10px;">Nog geen echte reviews?</h4>
+          <p style="font-size:13px;color:var(--gray-text);line-height:1.5;margin:0 0 10px;">Deze pagina toont tijdelijk mockcontent totdat de eerste live reviews binnenkomen.</p>
+          <button class="btn-p" style="width:100%;font-size:14px;padding:10px;" onclick="showPage('aannemers')">Bekijk aannemers →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 <!-- ══════════════════════════════════════════════════════
@@ -1267,7 +1362,8 @@ let currentKlusId = null;
 let allKlussen = [];          // alle geladen klussen (voor client-side filter)
 let filteredKlussen = [];     // na filters
 let klussensOffset = 0;
-const PAGE_SIZE = 50;         // laden we meer zodat client-side filter goed werkt
+const PAGE_SIZE = 24;         // sneller first paint op openstaande klussen
+const KLUS_LIST_COLUMNS = 'id,type,omschrijving,stad,postcode,budget,deadline,naam_klant,aangemaakt,woningtype,lat,lng,status';
 const KLUS_PUBLISH_TIMEOUT_MS = 15000;
 const KLUS_LOAD_TIMEOUT_MS = 12000;
 const PUBLISH_BUTTON_HTML = '<span>Klus publiceren</span><span>→</span>';
@@ -1468,6 +1564,22 @@ function setLoadMoreVisibility(visible) {
   if (wrap) wrap.style.display = visible ? 'block' : 'none';
 }
 
+async function findKlusByBeheerToken(beheerToken) {
+  if (!sb || !beheerToken) return null;
+  try {
+    const { data, error } = await sb
+      .from('klussen')
+      .select('id,beheer_token,aangemaakt')
+      .eq('beheer_token', beheerToken)
+      .order('aangemaakt', { ascending: false })
+      .limit(1);
+    if (error) return null;
+    return Array.isArray(data) && data.length ? data[0] : null;
+  } catch (err) {
+    return null;
+  }
+}
+
 async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving }) {
   if (!sb || !klusId || !beheerToken || !email || !sb.functions) {
     trackEvent('email_chain_skipped', {
@@ -1501,14 +1613,32 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       'E-mailketen'
     );
     if (error) {
+      let detailBody = null;
+      let statusCode = null;
+      try {
+        if (error?.context) {
+          statusCode = Number(error.context.status || 0) || null;
+          detailBody = await error.context.json().catch(async () => {
+            const text = await error.context.text();
+            return text ? { raw: text } : null;
+          });
+        }
+      } catch (parseErr) {}
+      const detailText = typeof detailBody === 'string'
+        ? detailBody
+        : (detailBody?.error || detailBody?.message || detailBody?.details || '');
       trackEvent('email_chain_failed', {
         klus_id: klusId,
         function_name: fnName,
         reason: String(error?.message || 'unknown'),
+        status_code: statusCode,
+        detail: detailText ? String(detailText).slice(0, 220) : null,
       });
-      console.warn('E-mailketen versturen mislukt:', error);
-      const errMsg = String(error?.message || '').toLowerCase();
-      if (errMsg.includes('502') || errMsg.includes('resend')) {
+      console.warn('E-mailketen versturen mislukt:', { error, statusCode, detailBody });
+      const errMsg = `${String(error?.message || '')} ${String(detailText || '')}`.toLowerCase();
+      if (errMsg.includes('test mode') || errMsg.includes('verify') || errMsg.includes('domain')) {
+        warnEmailFailure('Klus geplaatst, maar e-maildomein staat nog niet correct ingesteld. Controleer Resend domain + from-adres.');
+      } else if (errMsg.includes('502') || errMsg.includes('resend')) {
         warnEmailFailure('Klus geplaatst, maar e-mailservice gaf een fout. Gebruik de beheerknop om verder te gaan.');
       } else {
         warnEmailFailure('Klus geplaatst, maar e-mail kon niet worden verstuurd. Gebruik de beheerknop om verder te gaan.');
@@ -1610,7 +1740,7 @@ async function updateOpenKlussenCount() {
   if (!sb) return;
   try {
     const { count, error } = await withTimeout(
-      sb.from('klussen').select('*', { head: true, count: 'exact' }).eq('status', 'open'),
+      sb.from('klussen').select('id', { head: true, count: 'exact' }).eq('status', 'open'),
       5000,
       'Open klussen tellen'
     );
@@ -1659,7 +1789,7 @@ async function loadKlussen(reset = true) {
       void archiveerVerlopenKlussen().catch(err => console.warn('Archiveren op achtergrond mislukt:', err));
       const query = sb
         .from('klussen')
-        .select('*')
+        .select(KLUS_LIST_COLUMNS)
         .eq('status', 'open')
         .order('aangemaakt', { ascending: false })
         .range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
@@ -1675,7 +1805,7 @@ async function loadKlussen(reset = true) {
       if (khOpen) khOpen.textContent = allKlussen.length;
 
       applyFilters();
-      if (reset) void updateOpenKlussenCount();
+      if (reset) setTimeout(() => { void updateOpenKlussenCount(); }, 1200);
       const hasMore = loadedKlussen.length === PAGE_SIZE;
       setLoadMoreVisibility(hasMore);
       trackEvent('klussen_load_succeeded', {
@@ -2406,11 +2536,23 @@ async function insertKlus(payload, btnId) {
     } catch (firstErr) {
       const firstMsg = String(firstErr?.message || '').toLowerCase();
       if (!firstMsg.includes('timeout')) throw firstErr;
-      publishResult = await withTimeout(
-        sb.from('klussen').insert(payloadToInsert).select('id').single(),
-        Math.max(getKlusPublishTimeoutMs(), 22000),
-        'Klus publiceren (herkansing)'
-      );
+      // Geen tweede blind insert: eerst read-back op beheer_token.
+      let recovered = null;
+      for (let i = 0; i < 3; i++) {
+        await new Promise(resolve => setTimeout(resolve, 900));
+        recovered = await findKlusByBeheerToken(beheerToken);
+        if (recovered?.id) break;
+      }
+      if (recovered?.id) {
+        trackEvent('klus_publish_recovered_after_timeout', {
+          button_id: btnId,
+          klus_id: recovered.id,
+          duration_ms: Date.now() - publishStartedAt,
+        });
+        publishResult = { data: { id: recovered.id }, error: null };
+      } else {
+        throw firstErr;
+      }
     }
     const { data, error } = publishResult || {};
     if (error) {
@@ -3454,6 +3596,7 @@ function showPage(id) {
   if (id==='landing') initReveal();
   if (id==='klussen') void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
   if (id==='aannemers') { if (typeof renderDemoAannemers === 'function') renderDemoAannemers(); if (typeof loadAannemers === 'function') loadAannemers(); }
+  if (id==='reviews') renderReviewsPage();
   if (id==='faq') openFaqSection('stappenplan', document.querySelector('#page-faq .faq-tab'));
 }
 function goLanding(hash) { showPage('landing'); setTimeout(() => { const el=document.querySelector(hash); if(el)el.scrollIntoView({behavior:'smooth'}); }, 80); }
@@ -4170,6 +4313,57 @@ function closeAannemerProfiel() {
   document.getElementById('aannemerProfielOverlay').classList.remove('open');
   document.body.style.overflow = '';
   _activeAannemerProfielId = null;
+}
+
+const REVIEWS_PAGE_FALLBACK = [
+  { naam: 'Mark K.', stad: 'Utrecht', score: 4.8, tekst: 'Heldere communicatie en strak opgeleverd. Zeker aanrader.', datum: '2 dagen geleden' },
+  { naam: 'Sanne V.', stad: 'Helmond', score: 4.7, tekst: 'Badkamer renovatie netjes uitgevoerd en binnen planning.', datum: '5 dagen geleden' },
+  { naam: 'Tom B.', stad: 'Amsterdam', score: 4.9, tekst: 'Goede prijs-kwaliteit en vakwerk tot in detail.', datum: '1 week geleden' },
+  { naam: 'Nina R.', stad: 'Eindhoven', score: 4.6, tekst: 'Prima ervaring, snelle reactie en duidelijke afspraken.', datum: '9 dagen geleden' },
+  { naam: 'Jeroen L.', stad: 'Rotterdam', score: 4.8, tekst: 'Aannemer dacht actief mee en werkte erg netjes.', datum: '12 dagen geleden' },
+  { naam: 'Fatima A.', stad: 'Den Haag', score: 4.7, tekst: 'Fijne samenwerking, resultaat is precies wat we wilden.', datum: '2 weken geleden' },
+];
+
+function renderReviewsPage() {
+  const listEl = document.getElementById('reviewsPageList');
+  if (!listEl) return;
+
+  const dynamic = [];
+  (allAannemers || []).forEach(a => {
+    (a.reviews_v2 || a.reviews || []).forEach(r => {
+      const score = Number(getReviewTotalScore(r) || 0);
+      if (score <= 0) return;
+      dynamic.push({
+        naam: a.bedrijfsnaam || `${a.voornaam || ''} ${a.achternaam || ''}`.trim() || 'Aannemer',
+        stad: a.stad || 'Onbekend',
+        score,
+        tekst: r.tekst || 'Klantreview zonder toelichting.',
+        datum: r.aangemaakt ? new Date(r.aangemaakt).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent',
+      });
+    });
+  });
+
+  const items = (dynamic.length ? dynamic : REVIEWS_PAGE_FALLBACK).slice(0, 12);
+  const avg = items.length ? (items.reduce((s, r) => s + Number(r.score || 0), 0) / items.length) : 0;
+  const totalEl = document.getElementById('rv-total');
+  const avgEl = document.getElementById('rv-avg');
+  if (totalEl) totalEl.textContent = String(items.length);
+  if (avgEl) avgEl.textContent = avg > 0 ? avg.toFixed(1) : '—';
+
+  listEl.innerHTML = items.map(r => `
+    <article style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div>
+          <div style="font-size:14px;font-weight:800;color:var(--text-dark);">${escHtml(r.naam)}</div>
+          <div style="font-size:12px;color:var(--gray-text);">${escHtml(r.stad)}</div>
+        </div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--blue-dark);line-height:1;">${Number(r.score).toFixed(1)}</div>
+      </div>
+      <div style="font-size:13px;color:#7A5E00;">${[1,2,3,4,5].map(i => `<span style="color:${Number(r.score) >= i ? '#F5C200' : '#D1D5DB'};">★</span>`).join('')}</div>
+      <p style="font-size:13px;line-height:1.5;color:var(--text-dark);margin:0;">"${escHtml(r.tekst)}"</p>
+      <div style="font-size:11px;color:var(--gray-text);">${escHtml(r.datum)}</div>
+    </article>
+  `).join('');
 }
 
 function onAnZoekInput() {

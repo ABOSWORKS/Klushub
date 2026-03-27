@@ -89,8 +89,14 @@ serve(async (req: Request) => {
         html,
       }),
     });
-    const data = await resp.json().catch(() => ({}));
-    return { resp, data };
+    const rawText = await resp.text();
+    let data: Record<string, unknown> = {};
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      data = rawText ? { raw: rawText } : {};
+    }
+    return { resp, data, rawText };
   }
 
   let sendAttempt = await sendWithFrom(primaryFrom);
@@ -100,9 +106,27 @@ serve(async (req: Request) => {
   }
 
   if (!sendAttempt.resp.ok) {
+    const resendMessage = String(
+      (sendAttempt.data as Record<string, unknown>)?.message ||
+      (sendAttempt.data as Record<string, unknown>)?.error ||
+      ""
+    ).toLowerCase();
+    const likelyCause = resendMessage.includes("test mode")
+      ? "resend_test_mode_recipient_restriction"
+      : (resendMessage.includes("verify") || resendMessage.includes("domain") || resendMessage.includes("from"))
+      ? "resend_sender_domain_not_verified"
+      : "resend_api_error";
+    console.error("resend-email failed", {
+      status: sendAttempt.resp.status,
+      likelyCause,
+      fromTried: primaryFrom === fallbackFrom ? [fallbackFrom] : [primaryFrom, fallbackFrom],
+      resendData: sendAttempt.data,
+    });
     return jsonResponse(502, {
       ok: false,
       error: "Resend API failed",
+      resendStatus: sendAttempt.resp.status,
+      likelyCause,
       fromTried: primaryFrom === fallbackFrom ? [fallbackFrom] : [primaryFrom, fallbackFrom],
       details: sendAttempt.data,
     });
