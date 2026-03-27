@@ -1285,6 +1285,41 @@ const filterState = {
 
 // ─── Postcode → coördinaten cache ─────────────
 const geocodeCache = {};
+const EVENT_QUEUE_KEY = '__klushubEvents';
+const TRACKING_SESSION_KEY = '__klushubTrackingSessionId';
+const MAX_EVENT_QUEUE_SIZE = 300;
+
+function getTrackingSessionId() {
+  if (window[TRACKING_SESSION_KEY]) return window[TRACKING_SESSION_KEY];
+  const hasSecureUuid = window.crypto && typeof window.crypto.randomUUID === 'function';
+  window[TRACKING_SESSION_KEY] = hasSecureUuid
+    ? window.crypto.randomUUID()
+    : `sess-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  return window[TRACKING_SESSION_KEY];
+}
+
+function getCurrentPageId() {
+  const activePage = document.querySelector('.page.active');
+  if (!activePage || !activePage.id) return 'unknown';
+  return activePage.id.replace(/^page-/, '');
+}
+
+function trackEvent(name, props = {}) {
+  if (!name) return;
+  if (!Array.isArray(window[EVENT_QUEUE_KEY])) window[EVENT_QUEUE_KEY] = [];
+  const event = {
+    name,
+    ts: new Date().toISOString(),
+    session_id: getTrackingSessionId(),
+    page: getCurrentPageId(),
+    ...props,
+  };
+  window[EVENT_QUEUE_KEY].push(event);
+  if (window[EVENT_QUEUE_KEY].length > MAX_EVENT_QUEUE_SIZE) {
+    window[EVENT_QUEUE_KEY].splice(0, window[EVENT_QUEUE_KEY].length - MAX_EVENT_QUEUE_SIZE);
+  }
+  if (window.__KLUSHUB_DEBUG_TRACKING) console.log('[trackEvent]', event);
+}
 
 function getCatIcon(typeStr) {
   const t = (typeStr || '').toLowerCase();
@@ -1352,7 +1387,16 @@ function setLoadMoreVisibility(visible) {
 }
 
 async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving }) {
-  if (!sb || !klusId || !beheerToken || !email || !sb.functions) return;
+  if (!sb || !klusId || !beheerToken || !email || !sb.functions) {
+    trackEvent('email_chain_skipped', {
+      has_backend: !!sb,
+      has_klus_id: !!klusId,
+      has_token: !!beheerToken,
+      has_email: !!email,
+    });
+    return;
+  }
+  trackEvent('email_chain_started', { klus_id: klusId });
   const fnName = String(window.__KLUSHUB_EMAIL_FUNCTION || EMAIL_CHAIN_FUNCTION).trim();
   if (!fnName) return;
   const warnEmailFailure = (message) => {
@@ -1375,6 +1419,11 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       'E-mailketen'
     );
     if (error) {
+      trackEvent('email_chain_failed', {
+        klus_id: klusId,
+        function_name: fnName,
+        reason: String(error?.message || 'unknown'),
+      });
       console.warn('E-mailketen versturen mislukt:', error);
       const errMsg = String(error?.message || '').toLowerCase();
       if (errMsg.includes('502') || errMsg.includes('resend')) {
@@ -1384,11 +1433,21 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       }
       return;
     }
+    trackEvent('email_chain_succeeded', {
+      klus_id: klusId,
+      function_name: fnName,
+      response_ok: data?.ok !== false,
+    });
     if (data && data.ok === false) {
       console.warn('E-mailketen response niet OK:', data);
       warnEmailFailure('Klus geplaatst, maar e-mail kon niet worden bevestigd. Gebruik de beheerknop om verder te gaan.');
     }
   } catch (err) {
+    trackEvent('email_chain_failed', {
+      klus_id: klusId,
+      function_name: fnName,
+      reason: String(err?.message || err || 'unknown'),
+    });
     console.warn('E-mailketen timeout/mislukt:', err);
     warnEmailFailure('Klus geplaatst, maar e-mail duurt te lang. Gebruik de beheerknop om verder te gaan.');
   }
@@ -1482,9 +1541,12 @@ async function updateOpenKlussenCount() {
 }
 
 async function loadKlussen(reset = true) {
+  const loadStartedAt = Date.now();
+  trackEvent('klussen_load_started', { reset, offset: klussensOffset });
   if (!sb) {
     renderDemoKlussen();
     setLoadMoreVisibility(false);
+    trackEvent('klussen_load_demo_fallback', { reset });
     return false;
   }
   if (klussenLoadPromise) {
@@ -1534,8 +1596,21 @@ async function loadKlussen(reset = true) {
       if (reset) void updateOpenKlussenCount();
       const hasMore = loadedKlussen.length === PAGE_SIZE;
       setLoadMoreVisibility(hasMore);
+      trackEvent('klussen_load_succeeded', {
+        reset,
+        loaded_count: loadedKlussen.length,
+        total_count: allKlussen.length,
+        duration_ms: Date.now() - loadStartedAt,
+      });
       return true;
     } catch (err) {
+      const errMsg = String(err?.message || err || 'unknown');
+      trackEvent('klussen_load_failed', {
+        reset,
+        reason: errMsg,
+        timeout: errMsg.toLowerCase().includes('timeout'),
+        duration_ms: Date.now() - loadStartedAt,
+      });
       console.warn('Klussen laden mislukt, fallback volgt:', err);
       showToast('Klussen laden duurt te lang. Demo-klussen worden tijdelijk getoond.', true);
       if (reset || !allKlussen.length) {
@@ -2136,9 +2211,23 @@ async function submitHeroForm() {
   else if (!email.includes('@')) errors.push('E-mailadres (geen @ gevonden)');
   else if (!email.includes('.')) errors.push('E-mailadres (geen punt gevonden)');
 
-  if (errors.length > 1) { showToast(icon + 'Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
-  if (errors.length === 1) { showToast(icon + errors[0] + ' is niet correct ingevuld', true); return; }
+  if (errors.length > 1) {
+    trackEvent('klus_form_validation_failed', { form: 'hero', error_count: errors.length, errors: errors.join('|') });
+    showToast(icon + 'Meerdere velden zijn niet correct: ' + errors.join(', '), true);
+    return;
+  }
+  if (errors.length === 1) {
+    trackEvent('klus_form_validation_failed', { form: 'hero', error_count: errors.length, errors: errors.join('|') });
+    showToast(icon + errors[0] + ' is niet correct ingevuld', true);
+    return;
+  }
   const selectedType = [...document.querySelectorAll('.hf-chip.on')].map(c => c.textContent.trim()).join(', ');
+  trackEvent('klus_form_submit_clicked', {
+    form: 'hero',
+    has_budget: !!budgetRaw,
+    has_type: !!selectedType,
+    postcode_prefix: postcode.slice(0, 4),
+  });
   
   await insertKlus({ type: selectedType||'Overig', omschrijving, postcode, lat: null, lng: null, budget: budgetRaw?parseInt(budgetRaw):null, email_klant: email, naam_klant: email.split('@')[0], status: 'open' }, 'hf-btn');
 }
@@ -2166,12 +2255,26 @@ async function submitFullForm() {
   else if (!email.includes('.')) errors.push('E-mailadres (geen punt gevonden)');
   if (!deadline) errors.push('Deadline aanbiedingen');
 
-  if (errors.length > 1) { showToast(icon + 'Meerdere velden zijn niet correct: ' + errors.join(', '), true); return; }
-  if (errors.length === 1) { showToast(icon + errors[0] + ' is niet correct ingevuld', true); return; }
+  if (errors.length > 1) {
+    trackEvent('klus_form_validation_failed', { form: 'full', error_count: errors.length, errors: errors.join('|') });
+    showToast(icon + 'Meerdere velden zijn niet correct: ' + errors.join(', '), true);
+    return;
+  }
+  if (errors.length === 1) {
+    trackEvent('klus_form_validation_failed', { form: 'full', error_count: errors.length, errors: errors.join('|') });
+    showToast(icon + errors[0] + ' is niet correct ingevuld', true);
+    return;
+  }
   if (!document.getElementById('full-stad').value.trim()) {
     await autofillCityFromPostcode(postcode, 'full-stad');
   }
   const selectedType = [...document.querySelectorAll('#full-chips .chip.on')].map(c => c.textContent.trim()).join(', ');
+  trackEvent('klus_form_submit_clicked', {
+    form: 'full',
+    has_budget: !!budgetRaw,
+    has_type: !!selectedType,
+    postcode_prefix: postcode.slice(0, 4),
+  });
   
   await insertKlus({ type: selectedType||'Overig', omschrijving, postcode, stad: document.getElementById('full-stad').value.trim(), lat: null, lng: null, budget: budgetRaw?parseInt(budgetRaw):null, deadline: deadline||null, email_klant: email, naam_klant: `${fname} ${lname}`, telefoon: document.getElementById('full-telefoon').value.trim(), woningtype: document.getElementById('full-woningtype').value, uitvoering: document.getElementById('full-uitvoering').value.trim(), status: 'open' }, 'full-btn');
 }
@@ -2181,11 +2284,14 @@ async function submitFullForm() {
 // ⚠️ Als je dit verandert, verdwijnt de groene bevestigingsmodal!
 // ⚠️ Test ALTIJD: 1) Vul formulier, 2) Klik "Publiceren", 3) Controleer modal verschijnt
 async function insertKlus(payload, btnId) {
+  const publishStartedAt = Date.now();
   if (klusPublishInFlight) {
+    trackEvent('klus_publish_blocked_inflight', { button_id: btnId });
     showToast('<i data-lucide="hourglass" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Publicatie wordt nog verwerkt. Even geduldâ€¦', true);
     return;
   }
   klusPublishInFlight = true;
+  trackEvent('klus_publish_started', { button_id: btnId, type: payload?.type || 'Overig', has_backend: !!sb });
   const btn = document.getElementById(btnId);
   if (btn) {
     btn.disabled = true;
@@ -2196,6 +2302,11 @@ async function insertKlus(payload, btnId) {
     if (!sb) {
       await new Promise(r => setTimeout(r, 900));
       showKlusBevestiging('demo-123', 'demo-token', payload.omschrijving);
+      trackEvent('klus_publish_succeeded', {
+        mode: 'demo',
+        button_id: btnId,
+        duration_ms: Date.now() - publishStartedAt,
+      });
       return;
     }
     const hasSecureUuid = window.crypto && typeof window.crypto.randomUUID === 'function';
@@ -2221,10 +2332,21 @@ async function insertKlus(payload, btnId) {
     }
     const { data, error } = publishResult || {};
     if (error) {
+      trackEvent('klus_publish_failed', {
+        button_id: btnId,
+        reason: String(error?.message || 'unknown'),
+        duration_ms: Date.now() - publishStartedAt,
+      });
       showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true);
       return;
     }
     if (data && data.id) {
+      trackEvent('klus_publish_succeeded', {
+        mode: 'live',
+        button_id: btnId,
+        klus_id: data.id,
+        duration_ms: Date.now() - publishStartedAt,
+      });
       rememberGeplaatsteKlus({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
       showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
       void triggerKlusEmailChain({
@@ -2235,9 +2357,20 @@ async function insertKlus(payload, btnId) {
       });
       return;
     }
+    trackEvent('klus_publish_failed', {
+      button_id: btnId,
+      reason: 'no_insert_id',
+      duration_ms: Date.now() - publishStartedAt,
+    });
     showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus kon niet veilig worden opgeslagen. Probeer het opnieuw.', true);
   } catch (err) {
     const msg = err && err.message ? err.message : String(err || 'Onbekende fout');
+    trackEvent('klus_publish_failed', {
+      button_id: btnId,
+      reason: msg,
+      timeout: msg.toLowerCase().includes('timeout'),
+      duration_ms: Date.now() - publishStartedAt,
+    });
     if (msg.toLowerCase().includes('timeout')) {
       showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Publiceren duurt te lang. Controleer je verbinding en probeer opnieuw.', true);
     } else {
@@ -2586,9 +2719,26 @@ function closeReviewModal() {
   }
 }
 async function submitReview() {
+  const reviewStartedAt = Date.now();
   if (!_reviewContext) return;
-  if (!REVIEW_CRITERIA.every(c => _reviewScores[c.key])) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul alle 5 criteria in', true); return; }
+  trackEvent('review_submit_started', { klus_id: _reviewContext?.klusId || null, aannemer_id: _reviewContext?.aannemerId || null });
+  if (!REVIEW_CRITERIA.every(c => _reviewScores[c.key])) { trackEvent('review_submit_validation_failed', { klus_id: _reviewContext?.klusId || null }); showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul alle 5 criteria in', true); return; }
   const btn = document.getElementById('reviewSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Versturen...';
+  if (!sb) {
+    await new Promise(r => setTimeout(r,700));
+    btn.disabled = false;
+    btn.textContent = 'Review versturen â˜…';
+    trackEvent('review_submit_succeeded', {
+      mode: 'demo',
+      klus_id: _reviewContext?.klusId || null,
+      avg_score: Number((Object.values(_reviewScores).reduce((a,b)=>a+b,0) / REVIEW_CRITERIA.length).toFixed(1)),
+      duration_ms: Date.now() - reviewStartedAt,
+    });
+    showReviewSuccess();
+    return;
+  }
   btn.disabled = true; btn.textContent = 'Versturen…';
   if (!sb) { await new Promise(r => setTimeout(r,700)); btn.disabled=false; btn.textContent='Review versturen ★'; showReviewSuccess(); return; }
   const reviewPayload = {
@@ -2619,8 +2769,23 @@ async function submitReview() {
     error = insertErr || rpcErr;
   }
   btn.disabled=false; btn.textContent='Review versturen ★';
-  if (error) showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + error.message, true);
-  else showReviewSuccess();
+  if (error) {
+    trackEvent('review_submit_failed', {
+      klus_id: _reviewContext?.klusId || null,
+      reason: String(error?.message || 'unknown'),
+      duration_ms: Date.now() - reviewStartedAt,
+    });
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + error.message, true);
+  } else {
+    trackEvent('review_submit_succeeded', {
+      mode: 'live',
+      klus_id: _reviewContext?.klusId || null,
+      aannemer_id: _reviewContext?.aannemerId || null,
+      avg_score: Number((Object.values(_reviewScores).reduce((a,b)=>a+b,0) / REVIEW_CRITERIA.length).toFixed(1)),
+      duration_ms: Date.now() - reviewStartedAt,
+    });
+    showReviewSuccess();
+  }
 }
 function showReviewSuccess() {
   document.getElementById('review-form-body').style.display = 'none';
@@ -2628,12 +2793,36 @@ function showReviewSuccess() {
 }
 
 async function beheerKiesAannemer(klusId, token, aanbiedingId, aannemerNaam, aannemerId) {
-  if (!confirm(`Wil je ${aannemerNaam} definitief kiezen?\n\nDe aannemer ontvangt jouw contactgegevens. Andere aanbiedingen worden afgewezen.`)) return;
-  if (!sb) { showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen! (demo)'); return; }
+  const startedAt = Date.now();
+  if (!confirm(`Wil je ${aannemerNaam} definitief kiezen?\n\nDe aannemer ontvangt jouw contactgegevens. Andere aanbiedingen worden afgewezen.`)) {
+    trackEvent('aannemer_select_cancelled', { klus_id: klusId, aanbieding_id: aanbiedingId });
+    return;
+  }
+  trackEvent('aannemer_select_started', { klus_id: klusId, aanbieding_id: aanbiedingId, aannemer_id: aannemerId || null });
+  if (!sb) {
+    trackEvent('aannemer_select_succeeded', { mode: 'demo', klus_id: klusId, aanbieding_id: aanbiedingId, duration_ms: Date.now() - startedAt });
+    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen! (demo)');
+    return;
+  }
   const { error } = await sb.rpc('beheer_update_aanbieding', { p_klus_id: klusId, p_token: token, p_aanbieding_id: aanbiedingId, p_status: 'geaccepteerd' });
-  if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Fout: ' + error.message, true); return; }
+  if (error) {
+    trackEvent('aannemer_select_failed', { klus_id: klusId, aanbieding_id: aanbiedingId, reason: String(error?.message || 'unknown') });
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Fout: ' + error.message, true);
+    return;
+  }
   const { error: statusErr } = await sb.rpc('beheer_update_klus_status', { p_klus_id: klusId, p_token: token, p_status: 'gekozen' });
-  if (statusErr) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klusstatus bijwerken mislukt: ' + statusErr.message, true); return; }
+  if (statusErr) {
+    trackEvent('aannemer_select_failed', { klus_id: klusId, aanbieding_id: aanbiedingId, reason: String(statusErr?.message || 'status_update_failed') });
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klusstatus bijwerken mislukt: ' + statusErr.message, true);
+    return;
+  }
+  trackEvent('aannemer_select_succeeded', {
+    mode: 'live',
+    klus_id: klusId,
+    aanbieding_id: aanbiedingId,
+    aannemer_id: aannemerId || null,
+    duration_ms: Date.now() - startedAt,
+  });
   showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + aannemerNaam + ' gekozen!');
   openKlantBeheer(klusId, token);
   setTimeout(() => openReviewModal({ klusId, aannemerId, aannemerNaam, reviewerType: 'klant' }), 2000);
@@ -3024,10 +3213,11 @@ async function submitAanbieding() {
   const prijs   = document.getElementById('m-prijs').value.replace(/[^0-9]/g,'');
   const doorloop = document.getElementById('m-doorloop').value.trim();
   const bericht  = document.getElementById('m-bericht').value.trim();
-  if (!prijs) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul een prijs in', true); return; }
+  if (!prijs) { trackEvent('aanbieding_submit_validation_failed', { reason: 'missing_price' }); showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul een prijs in', true); return; }
   if (aanbiedingSubmitInFlight) {
     const maxWait = Math.max(AANBIEDING_TIMEOUT_MS, 5000) + 4000;
     if (Date.now() - aanbiedingSubmitStartedAt < maxWait) {
+      trackEvent('aanbieding_submit_blocked_inflight', { klus_id: currentKlusId || null });
       showToast('<i data-lucide="hourglass" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding wordt al verwerkt. Even geduld.', true);
       return;
     }
@@ -3037,6 +3227,7 @@ async function submitAanbieding() {
   }
   aanbiedingSubmitInFlight = true;
   aanbiedingSubmitStartedAt = Date.now();
+  trackEvent('aanbieding_submit_started', { klus_id: currentKlusId || null, aannemer_id: currentUser?.id || null });
   const btn = document.getElementById('m-send-btn');
   const klusIdSnapshot = currentKlusId;
   const aannemerId = currentUser?.id || null;
@@ -3045,10 +3236,16 @@ async function submitAanbieding() {
     if (!sb || !klusIdSnapshot || klusIdSnapshot.startsWith('demo')) {
       await new Promise(r => setTimeout(r, 700));
       closeModal();
+      trackEvent('aanbieding_submit_succeeded', {
+        mode: 'demo',
+        klus_id: klusIdSnapshot || null,
+        duration_ms: Date.now() - aanbiedingSubmitStartedAt,
+      });
       showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)');
       return;
     }
     if (!aannemerId) {
+      trackEvent('aanbieding_submit_failed', { klus_id: klusIdSnapshot || null, reason: 'missing_contractor_session' });
       showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Je sessie is verlopen. Log opnieuw in.', true);
       openAuth('login');
       return;
@@ -3060,13 +3257,30 @@ async function submitAanbieding() {
     );
     const error = result?.error || null;
     if (error) {
+      trackEvent('aanbieding_submit_failed', {
+        klus_id: klusIdSnapshot || null,
+        reason: String(error?.message || 'unknown'),
+        duration_ms: Date.now() - aanbiedingSubmitStartedAt,
+      });
       showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
       return;
     }
     closeModal();
+    trackEvent('aanbieding_submit_succeeded', {
+      mode: 'live',
+      klus_id: klusIdSnapshot || null,
+      aannemer_id: aannemerId,
+      duration_ms: Date.now() - aanbiedingSubmitStartedAt,
+    });
     showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!');
   } catch (err) {
     const msg = String(err?.message || err || 'Onbekende fout');
+    trackEvent('aanbieding_submit_failed', {
+      klus_id: klusIdSnapshot || null,
+      reason: msg,
+      timeout: msg.toLowerCase().includes('timeout'),
+      duration_ms: Date.now() - aanbiedingSubmitStartedAt,
+    });
     if (msg.toLowerCase().includes('timeout')) {
       showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding duurt te lang. Probeer opnieuw.', true);
     } else {
@@ -3153,6 +3367,7 @@ function showPage(id) {
     return;
   }
   nextPage.classList.add('active');
+  trackEvent('page_view', { page_id: id });
   window.scrollTo(0,0);
   if (id==='landing') initReveal();
   if (id==='klussen') void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
