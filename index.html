@@ -2834,8 +2834,8 @@ function showPage(id) {
   window.scrollTo(0,0);
   if (id==='landing') initReveal();
   if (id==='klussen') loadKlussen();
-  if (id==='aannemers') loadAannemers();
-  if (id==='faq') openFaqSection('stappenplan', document.querySelector('.faq-tab'));
+  if (id==='aannemers') { if (typeof renderDemoAannemers === 'function') renderDemoAannemers(); if (typeof loadAannemers === 'function') loadAannemers(); }
+  if (id==='faq') openFaqSection('stappenplan', document.querySelector('#page-faq .faq-tab'));
 }
 function goLanding(hash) { showPage('landing'); setTimeout(() => { const el=document.querySelector(hash); if(el)el.scrollIntoView({behavior:'smooth'}); }, 80); }
 function switchP(view) {
