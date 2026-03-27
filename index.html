@@ -2241,11 +2241,18 @@ async function doHeroSubmit() {
 
 // ── FAQ navigatie ─────────────────────────────
 function openFaqSection(id, btn) {
+  const sec = document.getElementById('faq-' + id);
+  const fallbackSec = document.getElementById('faq-stappenplan');
+  if (!sec && !fallbackSec) return;
   document.querySelectorAll('.faq-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.faq-tab').forEach(b => b.classList.remove('active'));
-  const sec = document.getElementById('faq-' + id);
-  if (sec) sec.classList.add('active');
+  const activeSec = sec || fallbackSec;
+  if (activeSec) activeSec.classList.add('active');
   if (btn) btn.classList.add('active');
+  if (!sec) {
+    const fallbackBtn = document.querySelector('#page-faq .faq-tab');
+    if (fallbackBtn) fallbackBtn.classList.add('active');
+  }
 }
 function toggleFaq(btn) {
   const item = btn.closest('.faq-item');
@@ -2928,37 +2935,42 @@ const anFilterState = {
 let anGeoTimer = null;
 
 async function loadAannemers() {
-  if (!sb) { renderDemoAannemers(); return; }
-  const { data, error } = await sb
-    .from('aannemers')
-    .select('*')
-    .order('aangemaakt', { ascending: false });
-  if (error) { showToast('Aannemers laden mislukt', true); renderDemoAannemers(); return; }
-  const { data: reviewsData, error: reviewsError } = await sb
-    .from('reviews')
-    .select('aannemer_id,score_kwaliteit,score_communicatie,score_prijs_kwaliteit,score_tijdigheid,score_netheid,tekst,aangemaakt');
-  if (reviewsError) console.warn('Reviews laden voor aannemers mislukt:', reviewsError);
-  const reviewsByAannemer = {};
-  (reviewsData || []).forEach(r => {
-    if (!r || !r.aannemer_id) return;
-    if (!reviewsByAannemer[r.aannemer_id]) reviewsByAannemer[r.aannemer_id] = [];
-    reviewsByAannemer[r.aannemer_id].push(r);
-  });
-  // Bereken gemiddelden per aannemer
-  allAannemers = (data || []).map(a => {
-    const revs = reviewsByAannemer[a.id] || [];
-    if (revs.length === 0) return { ...a, avg: 0, avg_kwaliteit: 0, avg_communicatie: 0, avg_prijs_kwaliteit: 0, avg_tijdigheid: 0, avg_netheid: 0, review_count: 0 };
-    const avg = k => revs.reduce((s,r) => s + (r[k]||0), 0) / revs.length;
-    const totaal = (avg('score_kwaliteit') + avg('score_communicatie') + avg('score_prijs_kwaliteit') + avg('score_tijdigheid') + avg('score_netheid')) / 5;
-    return { ...a, reviews: revs, avg: totaal, avg_kwaliteit: avg('score_kwaliteit'), avg_communicatie: avg('score_communicatie'), avg_prijs_kwaliteit: avg('score_prijs_kwaliteit'), avg_tijdigheid: avg('score_tijdigheid'), avg_netheid: avg('score_netheid'), review_count: revs.length };
-  });
-  // Stats
-  const totalRevs = allAannemers.reduce((s,a) => s + a.review_count, 0);
-  const el1 = document.getElementById('an-count');
-  const el2 = document.getElementById('an-rev-count');
-  if (el1) el1.textContent = allAannemers.length;
-  if (el2) el2.textContent = totalRevs;
-  applyAnFilters();
+  try {
+    if (!sb) { renderDemoAannemers(); return; }
+    const { data, error } = await sb
+      .from('aannemers')
+      .select('*')
+      .order('aangemaakt', { ascending: false });
+    if (error) { showToast('Aannemers laden mislukt', true); renderDemoAannemers(); return; }
+    const { data: reviewsData, error: reviewsError } = await sb
+      .from('reviews')
+      .select('aannemer_id,score_kwaliteit,score_communicatie,score_prijs_kwaliteit,score_tijdigheid,score_netheid,tekst,aangemaakt');
+    if (reviewsError) console.warn('Reviews laden voor aannemers mislukt:', reviewsError);
+    const reviewsByAannemer = {};
+    (reviewsData || []).forEach(r => {
+      if (!r || !r.aannemer_id) return;
+      if (!reviewsByAannemer[r.aannemer_id]) reviewsByAannemer[r.aannemer_id] = [];
+      reviewsByAannemer[r.aannemer_id].push(r);
+    });
+    // Bereken gemiddelden per aannemer
+    allAannemers = (data || []).map(a => {
+      const revs = reviewsByAannemer[a.id] || [];
+      if (revs.length === 0) return { ...a, avg: 0, avg_kwaliteit: 0, avg_communicatie: 0, avg_prijs_kwaliteit: 0, avg_tijdigheid: 0, avg_netheid: 0, review_count: 0 };
+      const avg = k => revs.reduce((s,r) => s + (r[k]||0), 0) / revs.length;
+      const totaal = (avg('score_kwaliteit') + avg('score_communicatie') + avg('score_prijs_kwaliteit') + avg('score_tijdigheid') + avg('score_netheid')) / 5;
+      return { ...a, reviews: revs, avg: totaal, avg_kwaliteit: avg('score_kwaliteit'), avg_communicatie: avg('score_communicatie'), avg_prijs_kwaliteit: avg('score_prijs_kwaliteit'), avg_tijdigheid: avg('score_tijdigheid'), avg_netheid: avg('score_netheid'), review_count: revs.length };
+    });
+    // Stats
+    const totalRevs = allAannemers.reduce((s,a) => s + a.review_count, 0);
+    const el1 = document.getElementById('an-count');
+    const el2 = document.getElementById('an-rev-count');
+    if (el1) el1.textContent = allAannemers.length;
+    if (el2) el2.textContent = totalRevs;
+    applyAnFilters();
+  } catch (err) {
+    console.warn('Aannemers laden crashed, falling back to demo data:', err);
+    renderDemoAannemers();
+  }
 }
 
 function renderDemoAannemers() {

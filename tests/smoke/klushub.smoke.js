@@ -64,6 +64,39 @@ async function run() {
   await page.goto(fileUrlForIndex());
   await page.waitForLoadState('domcontentloaded');
 
+  await page.click('nav a:has-text("FAQ & Handleidingen")');
+  await page.waitForTimeout(200);
+  const faqNavResult = await page.evaluate(() => {
+    const faqPage = document.getElementById('page-faq');
+    const activeSection = document.querySelector('#page-faq .faq-section.active');
+    const activeTab = document.querySelector('#page-faq .faq-tab.active');
+    return {
+      ok: !!faqPage && getComputedStyle(faqPage).display !== 'none' && !!activeSection,
+      activeSectionId: activeSection ? activeSection.id : null,
+      activeTabText: activeTab ? activeTab.textContent.trim() : null,
+      hasContent: !!faqPage && faqPage.textContent.trim().length > 100,
+    };
+  });
+  assert(faqNavResult.ok, 'FAQ nav click did not show the page');
+  assert(faqNavResult.activeSectionId === 'faq-stappenplan', `FAQ nav click opened wrong section: ${faqNavResult.activeSectionId}`);
+  assert(faqNavResult.hasContent, 'FAQ page lijkt leeg/wit via nav click');
+
+  await page.click('nav a:has-text("Aannemers")');
+  await page.waitForTimeout(500);
+  const aannemersNavResult = await page.evaluate(() => {
+    const aannPage = document.getElementById('page-aannemers');
+    const cards = document.getElementById('anCardsList');
+    return {
+      ok: !!aannPage && getComputedStyle(aannPage).display !== 'none',
+      hasContent: !!aannPage && aannPage.textContent.trim().length > 100,
+      cardsText: cards ? cards.textContent.trim() : '',
+      loading: cards ? /Aannemers laden/i.test(cards.textContent) : true,
+    };
+  });
+  assert(aannemersNavResult.ok, 'Aannemers nav click did not show the page');
+  assert(aannemersNavResult.hasContent, 'Aannemers page lijkt leeg/wit via nav click');
+  assert(!aannemersNavResult.loading, 'Aannemers page blijft op laadplaceholder hangen');
+
   const faqResult = await page.evaluate(() => {
     try {
       showPage('faq');
