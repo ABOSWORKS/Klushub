@@ -3535,8 +3535,9 @@ function renderStarsMini(score) {
 }
 
 function getReviewTotalScore(review) {
+  if (Number(review?.review_total || 0) > 0) return Number(review.review_total);
   const keys = ['score_kwaliteit', 'score_communicatie', 'score_prijs_kwaliteit', 'score_tijdigheid', 'score_netheid'];
-  const values = keys.map(k => Number(review?.[k] || 0)).filter(v => v > 0);
+  const values = keys.map(k => Number(review?.[k] || review?.subratings?.[k.replace('score_', '')] || 0)).filter(v => v > 0);
   if (!values.length) return 0;
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
@@ -3580,6 +3581,76 @@ function getHistogram(reviews) {
 
 function getActiveAannemerForProfile() {
   return allAannemers.find(x => x.id === _activeAannemerProfielId) || null;
+}
+
+function getReviewSummaryForAannemer(a, reviews) {
+  const fallbackTotal = reviews.length;
+  const fallbackAvg = fallbackTotal ? (reviews.reduce((sum, r) => sum + getReviewTotalScore(r), 0) / fallbackTotal) : 0;
+  const fallbackVerifiedShare = fallbackTotal ? (reviews.filter(isVerifiedReview).length / fallbackTotal) : 0;
+  const summary = a.review_summary_v2 || {};
+  return {
+    avg_rating: Number(summary.avg_rating ?? a.avg ?? fallbackAvg ?? 0),
+    total_reviews: Number(summary.total_reviews ?? a.review_count ?? fallbackTotal ?? 0),
+    verified_share: Number(summary.verified_share ?? fallbackVerifiedShare ?? 0),
+    trust_score: Number(summary.trust_score ?? a.trust_score ?? 0),
+    histogram_json: summary.histogram_json || null,
+    local_count: Number(summary.local_count || 0),
+  };
+}
+
+function normalizeRpcReviewRow(row) {
+  if (!row) return null;
+  const sub = row.subratings && typeof row.subratings === 'object' ? row.subratings : {};
+  const reviewTotal = Number(row.rating || row.review_total || 0);
+  return {
+    reviewer_type: row.reviewer_type || 'klant',
+    score_kwaliteit: Number(row.score_kwaliteit || sub.kwaliteit || 0),
+    score_communicatie: Number(row.score_communicatie || sub.communicatie || 0),
+    score_prijs_kwaliteit: Number(row.score_prijs_kwaliteit || sub.prijs_kwaliteit || 0),
+    score_tijdigheid: Number(row.score_tijdigheid || sub.tijdigheid || 0),
+    score_netheid: Number(row.score_netheid || sub.netheid || 0),
+    review_total: reviewTotal,
+    tekst: row.tekst || row.body || null,
+    aangemaakt: row.aangemaakt || row.published_at || null,
+    is_verified_job: row.is_verified_job === true || row.is_verified === true,
+    stad: row.city || null,
+    postcode: row.postcode || null,
+    local_distance_km: row.local_distance_km ?? null,
+  };
+}
+
+async function hydrateAannemerReviewInsights(a) {
+  if (!sb || !a?.id || !sb.rpc) return;
+  try {
+    const cityScope = anFilterState.zoekterm || a.stad || null;
+    const [summaryRes, reviewsRes] = await Promise.all([
+      sb.rpc('get_review_summary_v2', {
+        p_contractor_id: a.id,
+        p_city: cityScope,
+        p_radius_km: Number(anFilterState.radius || 25),
+      }),
+      sb.rpc('get_contractor_reviews_v2', {
+        p_contractor_id: a.id,
+        p_city: cityScope,
+        p_radius_km: Number(anFilterState.radius || 25),
+        p_sort: 'relevant',
+        p_limit: 100,
+        p_offset: 0,
+      }),
+    ]);
+
+    if (!summaryRes?.error && summaryRes?.data) {
+      a.review_summary_v2 = Array.isArray(summaryRes.data) ? summaryRes.data[0] : summaryRes.data;
+    }
+    if (!reviewsRes?.error && Array.isArray(reviewsRes?.data)) {
+      const normalized = reviewsRes.data.map(normalizeRpcReviewRow).filter(Boolean);
+      if (normalized.length) a.reviews_v2 = normalized;
+    }
+  } catch (err) {
+    console.warn('Review insights RPC fallback naar lokale data:', err);
+  }
+  const current = getActiveAannemerForProfile();
+  if (current && current.id === a.id) renderAannemerReviews(current);
 }
 
 function onAannemerReviewFilterChange() {
@@ -3659,16 +3730,29 @@ async function openAannemerProfiel(id) {
 
   // Reviews
   renderAannemerReviews(a);
+  void hydrateAannemerReviewInsights(a);
 }
 
 function renderAannemerReviews(a) {
   const body = document.getElementById('ap-body');
   if (!body) return;
-  const revs = (a.reviews || []).map((r, idx) => ({ ...r, __idx: idx }));
-  const histogram = getHistogram(revs);
-  const verifiedCount = revs.filter(isVerifiedReview).length;
-  const verifiedSharePct = revs.length ? Math.round((verifiedCount / revs.length) * 100) : 0;
-  const trustScore100 = getReviewTrustScore100(a, revs);
+  const sourceReviews = (a.reviews_v2 && a.reviews_v2.length ? a.reviews_v2 : (a.reviews || []));
+  const revs = sourceReviews.map((r, idx) => ({ ...r, __idx: idx }));
+  const summary = getReviewSummaryForAannemer(a, revs);
+  let histogram = getHistogram(revs);
+  if (summary.histogram_json && typeof summary.histogram_json === 'object') {
+    histogram = {
+      1: Number(summary.histogram_json['1'] || summary.histogram_json[1] || 0),
+      2: Number(summary.histogram_json['2'] || summary.histogram_json[2] || 0),
+      3: Number(summary.histogram_json['3'] || summary.histogram_json[3] || 0),
+      4: Number(summary.histogram_json['4'] || summary.histogram_json[4] || 0),
+      5: Number(summary.histogram_json['5'] || summary.histogram_json[5] || 0),
+    };
+  }
+  const verifiedSharePct = Math.round(Math.max(0, Math.min(1, summary.verified_share || 0)) * 100);
+  const trustScore100 = summary.trust_score > 0
+    ? Math.round(Math.min(100, Math.max(0, (summary.trust_score / 5) * 100)))
+    : getReviewTrustScore100(a, revs);
   const localLabel = a.stad ? `${a.stad} & omgeving` : 'Nederland';
 
   const CRIT = [
@@ -3705,15 +3789,15 @@ function renderAannemerReviews(a) {
             <div style="font-size:12px;font-weight:700;color:var(--blue-dark);">${trustScore100}/100</div>
           </div>
           <div style="display:flex;align-items:end;gap:10px;margin-top:4px;">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:34px;line-height:1;color:var(--blue-dark);font-weight:900;">${a.avg > 0 ? a.avg.toFixed(1) : '—'}</div>
-            <div style="font-size:12px;color:var(--gray-text);padding-bottom:4px;">${revs.length} review${revs.length !== 1 ? 's' : ''}</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:34px;line-height:1;color:var(--blue-dark);font-weight:900;">${summary.avg_rating > 0 ? summary.avg_rating.toFixed(1) : '—'}</div>
+            <div style="font-size:12px;color:var(--gray-text);padding-bottom:4px;">${summary.total_reviews} review${summary.total_reviews !== 1 ? 's' : ''}</div>
           </div>
           <div style="height:8px;border-radius:999px;background:#E8ECF4;overflow:hidden;margin-top:8px;">
             <div style="height:100%;width:${trustScore100}%;background:linear-gradient(90deg,var(--yellow),var(--blue-light));"></div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
             <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#ECFDF3;color:#15803D;border:1px solid #BBF7D0;">${verifiedSharePct}% geverifieerd</span>
-            <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">${localLabel}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">${summary.local_count > 0 ? `${summary.local_count} lokaal` : localLabel}</span>
             <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#FFF7D6;color:#7A5E00;border:1px solid #F5E4A3;">${a.trust_label || 'Betrouwbaar profiel'}</span>
           </div>
         </div>
