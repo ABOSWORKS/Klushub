@@ -1581,7 +1581,7 @@ async function findKlusByBeheerToken(beheerToken) {
 }
 
 async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving }) {
-  if (!sb || !klusId || !beheerToken || !email || !sb.functions) {
+  if (!sb || !klusId || !beheerToken || !email) {
     trackEvent('email_chain_skipped', {
       has_backend: !!sb,
       has_klus_id: !!klusId,
@@ -1593,6 +1593,7 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
   trackEvent('email_chain_started', { klus_id: klusId });
   const fnName = String(window.__KLUSHUB_EMAIL_FUNCTION || EMAIL_CHAIN_FUNCTION).trim();
   if (!fnName) return;
+  const functionUrl = `${String(SUPABASE_URL || '').replace(/\/$/, '')}/functions/v1/${encodeURIComponent(fnName)}`;
   const warnEmailFailure = (message) => {
     const now = Date.now();
     if (now - lastEmailChainWarningAt < 5000) return;
@@ -1600,42 +1601,47 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
     showToast(`<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>${message}`, true);
   };
   try {
-    const { data, error } = await withTimeout(
-      sb.functions.invoke(fnName, {
-        body: {
+    const response = await withTimeout(
+      fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: SUPABASE_ANON,
+          Authorization: `Bearer ${SUPABASE_ANON}`,
+        },
+        body: JSON.stringify({
           klus_id: klusId,
           beheer_token: beheerToken,
           email_klant: email,
           omschrijving: omschrijving || '',
-        },
+        }),
       }),
       EMAIL_CHAIN_TIMEOUT_MS,
       'E-mailketen'
     );
-    if (error) {
-      let detailBody = null;
-      let statusCode = null;
-      try {
-        if (error?.context) {
-          statusCode = Number(error.context.status || 0) || null;
-          detailBody = await error.context.json().catch(async () => {
-            const text = await error.context.text();
-            return text ? { raw: text } : null;
-          });
-        }
-      } catch (parseErr) {}
+    let detailBody = null;
+    try {
+      const text = await response.text();
+      detailBody = text ? JSON.parse(text) : null;
+    } catch (parseErr) {
+      detailBody = null;
+    }
+    if (!response.ok) {
       const detailText = typeof detailBody === 'string'
         ? detailBody
-        : (detailBody?.error || detailBody?.message || detailBody?.details || '');
+        : (detailBody?.error || detailBody?.message || detailBody?.details || detailBody?.likelyCause || '');
       trackEvent('email_chain_failed', {
         klus_id: klusId,
         function_name: fnName,
-        reason: String(error?.message || 'unknown'),
-        status_code: statusCode,
+        reason: `HTTP ${response.status}`,
+        status_code: response.status,
         detail: detailText ? String(detailText).slice(0, 220) : null,
       });
-      console.warn('E-mailketen versturen mislukt:', { error, statusCode, detailBody });
-      const errMsg = `${String(error?.message || '')} ${String(detailText || '')}`.toLowerCase();
+      console.warn('E-mailketen versturen mislukt:', { status: response.status, detailBody });
+      const errMsg = `${String(response.status)} ${String(detailText || '')}`.toLowerCase();
+      if (response.status === 401 || response.status === 403) {
+        warnEmailFailure('Klus geplaatst, maar e-mailendpoint autorisatie faalde (401/403). Controleer function JWT-instelling en keys.');
+      } else
       if (errMsg.includes('test mode') || errMsg.includes('verify') || errMsg.includes('domain')) {
         warnEmailFailure('Klus geplaatst, maar e-maildomein staat nog niet correct ingesteld. Controleer Resend domain + from-adres.');
       } else if (errMsg.includes('502') || errMsg.includes('resend')) {
@@ -1645,6 +1651,7 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       }
       return;
     }
+    const data = detailBody || {};
     trackEvent('email_chain_succeeded', {
       klus_id: klusId,
       function_name: fnName,
@@ -1787,38 +1794,49 @@ async function loadKlussen(reset = true) {
 
     try {
       void archiveerVerlopenKlussen().catch(err => console.warn('Archiveren op achtergrond mislukt:', err));
-      const buildKlusQuery = (columns) => sb
-        .from('klussen')
-        .select(columns)
-        .eq('status', 'open')
-        .order('aangemaakt', { ascending: false })
-        .range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
+      const buildKlusQuery = ({ columns, orderColumn }) => {
+        let q = sb
+          .from('klussen')
+          .select(columns)
+          .eq('status', 'open');
+        if (orderColumn) q = q.order(orderColumn, { ascending: false });
+        return q.range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
+      };
+
+      const attempts = [
+        { columns: KLUS_LIST_COLUMNS, orderColumn: 'aangemaakt', label: 'fast+aangemaakt' },
+        { columns: KLUS_LIST_COLUMNS, orderColumn: 'created_at', label: 'fast+created_at' },
+        { columns: '*', orderColumn: 'aangemaakt', label: 'all+aangemaakt' },
+        { columns: '*', orderColumn: 'created_at', label: 'all+created_at' },
+        { columns: '*', orderColumn: null, label: 'all+no-order' },
+      ];
 
       let data = null;
       let error = null;
-      ({ data, error } = await withTimeout(buildKlusQuery(KLUS_LIST_COLUMNS), getKlusLoadTimeoutMs(), 'Klussen laden'));
-      if (error) {
-        const msg = String(error?.message || '').toLowerCase();
-        const looksLikeColumnMismatch =
-          msg.includes('column') ||
-          msg.includes('schema cache') ||
-          msg.includes('could not find') ||
-          msg.includes('does not exist');
-        if (looksLikeColumnMismatch) {
-          console.warn('Kolom mismatch bij snelle klussen-query, fallback naar select(*)', error);
-          ({ data, error } = await withTimeout(buildKlusQuery('*'), getKlusLoadTimeoutMs(), 'Klussen laden (fallback)'));
-        }
+      for (const attempt of attempts) {
+        ({ data, error } = await withTimeout(buildKlusQuery(attempt), getKlusLoadTimeoutMs(), `Klussen laden (${attempt.label})`));
+        if (!error) break;
+        console.warn(`Klussen query poging mislukt (${attempt.label})`, error);
       }
       if (error) throw error;
 
-      const loadedKlussen = data || [];
+      const loadedKlussen = (data || []).map(k => ({
+        ...k,
+        aangemaakt: k?.aangemaakt || k?.created_at || null,
+      }));
       allKlussen = reset ? loadedKlussen : [...allKlussen, ...loadedKlussen];
       klussensOffset += loadedKlussen.length;
 
       const khOpen = document.getElementById('kh-open');
       if (khOpen) khOpen.textContent = allKlussen.length;
 
-      applyFilters();
+      try {
+        applyFilters();
+      } catch (renderErr) {
+        console.error('Filter/render fout tijdens klussen laden. Ongefilterde live-lijst wordt getoond.', renderErr);
+        filteredKlussen = [...loadedKlussen];
+        renderKlussen(loadedKlussen);
+      }
       if (reset) setTimeout(() => { void updateOpenKlussenCount(); }, 1200);
       const hasMore = loadedKlussen.length === PAGE_SIZE;
       setLoadMoreVisibility(hasMore);
