@@ -36,6 +36,15 @@ async function run() {
         display_name: 'Amsterdam, Noord-Holland, Nederland',
         address: { city: 'Amsterdam' },
       }];
+      await new Promise(resolve => setTimeout(resolve, 250));
+    } else if (q === 'rotterdam') {
+      body = [{
+        lat: '51.9244',
+        lon: '4.4777',
+        display_name: 'Rotterdam, Zuid-Holland, Nederland',
+        address: { city: 'Rotterdam' },
+      }];
+      await new Promise(resolve => setTimeout(resolve, 10));
     } else {
       body = [{
         lat: '52.0907',
@@ -54,6 +63,52 @@ async function run() {
 
   await page.goto(fileUrlForIndex());
   await page.waitForLoadState('domcontentloaded');
+
+  const faqResult = await page.evaluate(() => {
+    try {
+      showPage('faq');
+      const faqPage = document.getElementById('page-faq');
+      const visible = !!faqPage && getComputedStyle(faqPage).display !== 'none';
+      const hasContent = !!faqPage && faqPage.textContent.trim().length > 100;
+      return { ok: true, visible, hasContent };
+    } catch (e) {
+      return { ok: false, err: String(e) };
+    }
+  });
+  assert(faqResult.ok, `FAQ flow crashed: ${faqResult.err || 'unknown'}`);
+  assert(faqResult.visible, 'FAQ pagina is niet zichtbaar');
+  assert(faqResult.hasContent, 'FAQ pagina lijkt leeg/wit');
+
+  const bevestigingResult = await page.evaluate(async () => {
+    try {
+      showKlusBevestiging('smoke-klus-id', 'smoke-token', 'Test klus');
+      const overlay = document.getElementById('bevestigingOverlay');
+      const openState = {
+        hasOverlay: !!overlay,
+        hasOpenClass: !!overlay && overlay.classList.contains('open'),
+        ariaHidden: overlay ? overlay.getAttribute('aria-hidden') : null,
+        display: overlay ? overlay.style.display : null,
+      };
+      closeBevestiging();
+      await new Promise(resolve => setTimeout(resolve, 280));
+      const closedState = {
+        hasOpenClass: !!overlay && overlay.classList.contains('open'),
+        ariaHidden: overlay ? overlay.getAttribute('aria-hidden') : null,
+        display: overlay ? overlay.style.display : null,
+      };
+      return { ok: true, openState, closedState };
+    } catch (e) {
+      return { ok: false, err: String(e) };
+    }
+  });
+  assert(bevestigingResult.ok, `Bevestiging flow crashed: ${bevestigingResult.err || 'unknown'}`);
+  assert(bevestigingResult.openState.hasOverlay, 'Bevestiging overlay element ontbreekt');
+  assert(bevestigingResult.openState.hasOpenClass, 'Bevestiging overlay opent niet');
+  assert(bevestigingResult.openState.ariaHidden === 'false', 'Bevestiging overlay aria-hidden opent niet correct');
+  assert(bevestigingResult.openState.display === 'flex', `Bevestiging overlay display open mismatch: ${bevestigingResult.openState.display}`);
+  assert(!bevestigingResult.closedState.hasOpenClass, 'Bevestiging overlay sluit niet');
+  assert(bevestigingResult.closedState.ariaHidden === 'true', 'Bevestiging overlay aria-hidden sluit niet correct');
+  assert(bevestigingResult.closedState.display === 'none', `Bevestiging overlay display close mismatch: ${bevestigingResult.closedState.display}`);
 
   const profileResult = await page.evaluate(() => {
     try {
@@ -92,6 +147,13 @@ async function run() {
   const radiusVisible = await page.locator('#an-radius-wrap').isVisible();
   assert(!radiusVisible, 'Aannemer regio radius blijft zichtbaar na ongeldige regio input');
 
+  await page.fill('#an-regio-input', 'Amsterdam');
+  await page.waitForTimeout(60);
+  await page.fill('#an-regio-input', 'Rotterdam');
+  await page.waitForTimeout(1200);
+  const raceStatus = (await page.locator('#an-regio-status').innerText()).toLowerCase();
+  assert(raceStatus.includes('rotterdam'), `Aannemer regio race-condition: laatste input niet actief (${raceStatus})`);
+
   await page.evaluate(() => {
     showPage('klussen');
     switchP('klussen');
@@ -118,6 +180,11 @@ async function run() {
   const fullStad = await page.locator('#full-stad').inputValue();
   assert(normalizedPostcode === '5705 CL', `Postcode normalisatie mislukt: ${normalizedPostcode}`);
   assert(fullStad.trim() === 'Helmond', `Postcode->stad autofill mislukt: ${fullStad}`);
+  await page.fill('#full-postcode', '12');
+  await page.locator('#full-postcode').blur();
+  await page.waitForTimeout(700);
+  const fullStadAfterInvalid = await page.locator('#full-stad').inputValue();
+  assert(fullStadAfterInvalid.trim() === '', `Stad blijft stale na ongeldige postcode: ${fullStadAfterInvalid}`);
 
   assert(pageErrors.length === 0, `Onverwachte page errors: ${pageErrors.join(' | ')}`);
 

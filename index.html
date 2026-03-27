@@ -1734,23 +1734,38 @@ function getStadCoords(stad='') {
 }
 
 let klusPostcodeTimer = null;
-async function autofillCityFromPostcode(postcode, cityInputId) {
+let klusPostcodeLookupSeq = 0;
+async function autofillCityFromPostcode(postcode, cityInputId, lookupId=null) {
   const normalized = normalizePostcodeInput(postcode);
-  if (!/^[1-9][0-9]{3}\s?[A-Z]{2}$/.test(normalized)) return;
   const cityInput = document.getElementById(cityInputId);
   if (!cityInput) return;
+  if (!/^[1-9][0-9]{3}\s?[A-Z]{2}$/.test(normalized)) {
+    if (cityInput.dataset.autoFilled === 'true') cityInput.value = '';
+    cityInput.dataset.autoFilled = 'false';
+    return;
+  }
+  cityInput.dataset.lookupPostcode = normalized;
   const coords = await fetchCoordsForPostcode(normalized);
-  if (coords && coords.city) cityInput.value = coords.city;
+  if (lookupId !== null && lookupId !== klusPostcodeLookupSeq) return;
+  if (cityInput.dataset.lookupPostcode !== normalized) return;
+  if (coords && coords.city) {
+    cityInput.value = coords.city;
+    cityInput.dataset.autoFilled = 'true';
+    return;
+  }
+  if (cityInput.dataset.autoFilled === 'true') cityInput.value = '';
+  cityInput.dataset.autoFilled = 'false';
 }
 
 function onKlusPostcodeInput(postcodeInputId, cityInputId) {
   const pcInput = document.getElementById(postcodeInputId);
   if (!pcInput) return;
-  const raw = pcInput.value || '';
   clearTimeout(klusPostcodeTimer);
   klusPostcodeTimer = setTimeout(async () => {
+    const raw = pcInput.value || '';
     pcInput.value = normalizePostcodeInput(raw);
-    await autofillCityFromPostcode(pcInput.value, cityInputId);
+    const lookupId = ++klusPostcodeLookupSeq;
+    await autofillCityFromPostcode(pcInput.value, cityInputId, lookupId);
   }, 500);
 }
 
@@ -1761,7 +1776,8 @@ function initKlusPostcodeAutofill() {
     fullPc.addEventListener('input', () => onKlusPostcodeInput('full-postcode', 'full-stad'));
     fullPc.addEventListener('blur', async () => {
       fullPc.value = normalizePostcodeInput(fullPc.value || '');
-      await autofillCityFromPostcode(fullPc.value, 'full-stad');
+      const lookupId = ++klusPostcodeLookupSeq;
+      await autofillCityFromPostcode(fullPc.value, 'full-stad', lookupId);
     });
   }
   const heroPc = document.getElementById('hf-postcode');
@@ -1994,24 +2010,34 @@ async function submitFullForm() {
 // ⚠️ Test ALTIJD: 1) Vul formulier, 2) Klik "Publiceren", 3) Controleer modal verschijnt
 async function insertKlus(payload, btnId) {
   const btn = document.getElementById(btnId);
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publiceren…';
-  if (!sb) {
-    await new Promise(r => setTimeout(r, 900));
-    btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>';
-    showKlusBevestiging('demo-123', 'demo-token', payload.omschrijving);
-    return;
-  }
-  // FIX: genereer beheer_token client-side zodat we niet op DB-response hoeven te wachten
-  const beheerToken = crypto.randomUUID();
-  payload.beheer_token = beheerToken;
-  const { data, error } = await sb.from('klussen').insert(payload).select('id').single();
-  btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>';
-  if (error) { showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true); }
-  else if (data && data.id) {
-    rememberGeplaatsteKlus({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
-    showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
-  } else {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Publiceren…'; }
+  try {
+    if (!sb) {
+      await new Promise(r => setTimeout(r, 900));
+      showKlusBevestiging('demo-123', 'demo-token', payload.omschrijving);
+      return;
+    }
+    const hasSecureUuid = window.crypto && typeof window.crypto.randomUUID === 'function';
+    const beheerToken = hasSecureUuid
+      ? window.crypto.randomUUID()
+      : `beheer-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    payload.beheer_token = beheerToken;
+    const { data, error } = await sb.from('klussen').insert(payload).select('id').single();
+    if (error) {
+      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Opslaan mislukt: ' + error.message, true);
+      return;
+    }
+    if (data && data.id) {
+      rememberGeplaatsteKlus({ id: data.id, token: beheerToken, omschrijving: payload.omschrijving, datum: Date.now() });
+      showKlusBevestiging(data.id, beheerToken, payload.omschrijving);
+      return;
+    }
     showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus kon niet veilig worden opgeslagen. Probeer het opnieuw.', true);
+  } catch (err) {
+    const msg = err && err.message ? err.message : String(err || 'Onbekende fout');
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Publiceren mislukt: ' + msg, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<span>Klus publiceren</span><span>→</span>'; }
   }
 }
 
@@ -2104,6 +2130,15 @@ async function loadMijnKlussen() {
 let _bevKlusId = null;
 let _bevToken  = null;
 
+function setBevestigingOverlayState(overlay, isOpen) {
+  if (!overlay) return;
+  overlay.classList.toggle('open', isOpen);
+  overlay.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+  overlay.style.display = isOpen ? 'flex' : 'none';
+  overlay.style.visibility = isOpen ? 'visible' : 'hidden';
+  overlay.style.opacity = isOpen ? '1' : '0';
+}
+
 // ⚠️ KRITIEK: Deze functie toont de GROENE BEVESTIGINGSMODAL
 // ⚠️ MOET aangeroepen worden door insertKlus() na succesvolle job plaatsing
 // ⚠️ HTML element moet class="bevestiging-overlay" hebben (zie regel ~3400)
@@ -2122,11 +2157,7 @@ function showKlusBevestiging(klusId, token, omschrijving) {
   if (overlay) {
     if (overlay.parentElement !== document.body) document.body.appendChild(overlay);
     overlay.scrollTop = 0;
-    overlay.style.display = 'flex';
-    overlay.style.visibility = 'visible';
-    overlay.style.opacity = '1';
-    overlay.classList.add('open');
-    overlay.setAttribute('aria-hidden', 'false');
+    setBevestigingOverlayState(overlay, true);
     markOverlayOpen(overlay);
 
     const beheerBtn = document.getElementById('bev-beheer-btn');
@@ -2147,7 +2178,7 @@ function closeBevestiging(preserveContext=false) {
     o.style.visibility = 'hidden';
     markOverlayClosed(o);
     setTimeout(() => {
-      if (!o.classList.contains('open')) o.style.display = 'none';
+      if (!o.classList.contains('open')) setBevestigingOverlayState(o, false);
     }, 220);
   }
   if (!preserveContext) {
@@ -2156,9 +2187,18 @@ function closeBevestiging(preserveContext=false) {
   }
 }
 
-function openKlantBeheerFromBev() {
-  if (_bevKlusId && _bevToken && _bevKlusId !== 'demo-123') {
-    openKlantBeheer(_bevKlusId, _bevToken);
+async function openKlantBeheerFromBev() {
+  if (!_bevKlusId || !_bevToken || _bevKlusId === 'demo-123') return;
+  const opened = await openKlantBeheer(_bevKlusId, _bevToken);
+  if (opened) {
+    closeBevestiging();
+    return;
+  }
+  showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Beheer-link kon niet worden geopend. Controleer je e-mail voor de juiste link.');
+  const overlay = document.getElementById('bevestigingOverlay');
+  if (overlay) {
+    setBevestigingOverlayState(overlay, true);
+    markOverlayOpen(overlay);
   }
 }
 
@@ -2397,9 +2437,13 @@ async function openSavedKlusFromList(id, token) {
 
 async function openKlantBeheer(klusId, token) {
   const overlay = document.getElementById('klantBeheerOverlay');
+  const body = document.getElementById('kb-body');
+  if (!overlay || !body) {
+    showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Beheerpagina kon niet worden geopend. Probeer de pagina te verversen.');
+    return false;
+  }
   overlay.classList.add('open');
   markOverlayOpen(overlay);
-  const body = document.getElementById('kb-body');
   body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><div class="spinner spinner-dark" style="width:24px;height:24px;border-width:2px;margin-bottom:8px"></div></div><div style="font-size:15px;font-weight:600">Klus & Aanbiedingen laden…</div></div>';
 
   if (!sb) {
@@ -2421,12 +2465,22 @@ async function openKlantBeheer(klusId, token) {
   }
 
   const k = data;
+  const effectiveToken = token || k.beheer_token || '';
+  if (!effectiveToken) {
+    body.innerHTML = `
+      <div class="mkp-empty">
+        <div class="e-ico"><i data-lucide="alert-triangle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div>
+        <div style="font-size:15px;font-weight:600">Beheer-link onvolledig</div>
+        <p style="font-size:13px;margin-top:6px">De beveiligingstoken ontbreekt. Open de originele link uit je e-mail opnieuw.</p>
+      </div>`;
+    return false;
+  }
   const isVerlopen = k.status === 'open' && k.deadline && new Date(k.deadline) < new Date();
   const klusStatus = isVerlopen ? 'verlopen' : k.status;
   const statusLabels = { open:'🚀 Klus is Open', gesloten:'🔒 Gesloten', verlopen:'Klus Verlopen', geannuleerd:'Geannuleerd' };
   
   const aanbiedingen = k.aanbiedingen_data || [];
-  const magicLink = window.location.origin + window.location.pathname + `?beheer=${k.id}&token=${k.beheer_token}`;
+  const magicLink = window.location.origin + window.location.pathname + `?beheer=${k.id}&token=${effectiveToken}`;
 
   let html = `
     <div style="background:var(--gray-soft); padding:16px; border-radius:12px; margin-bottom:20px; border:1px solid var(--gray-border)">
@@ -2447,7 +2501,7 @@ async function openKlantBeheer(klusId, token) {
         </div>
       </div>
       <div style="margin-top:16px; display:flex; gap:10px;">
-        ${klusStatus === 'open' ? `<button class="mkp-btn mkp-btn-close" onclick="beheerSluitKlus('${k.id}', '${k.beheer_token}')"><i data-lucide="x" style="width:14px;height:14px;vertical-align:-2px"></i> Klus Sluiten</button>` : `<button class="mkp-btn mkp-btn-reopen" onclick="beheerOpenKlus('${k.id}', '${k.beheer_token}')"><i data-lucide="rotate-ccw" style="width:14px;height:14px;vertical-align:-2px"></i> Heropenen</button>`}
+        ${klusStatus === 'open' ? `<button class="mkp-btn mkp-btn-close" onclick="beheerSluitKlus('${k.id}', '${effectiveToken}')"><i data-lucide="x" style="width:14px;height:14px;vertical-align:-2px"></i> Klus Sluiten</button>` : `<button class="mkp-btn mkp-btn-reopen" onclick="beheerOpenKlus('${k.id}', '${effectiveToken}')"><i data-lucide="rotate-ccw" style="width:14px;height:14px;vertical-align:-2px"></i> Heropenen</button>`}
       </div>
     </div>
   `;
@@ -2470,8 +2524,8 @@ async function openKlantBeheer(klusId, token) {
       let callToAction = '';
       if (a.status === 'in_behandeling') {
         callToAction = `
-          <button class="mkp-btn mkp-btn-reopen" style="background:#22c55e;border-color:#22c55e;color:white" onclick="beheerAccepteerBod('${k.id}', '${k.beheer_token}', '${a.id}', 'geaccepteerd')">Accepteren ✓</button>
-          <button class="mkp-btn mkp-btn-close" onclick="beheerAccepteerBod('${k.id}', '${k.beheer_token}', '${a.id}', 'afgewezen')">Afwijzen</button>
+          <button class="mkp-btn mkp-btn-reopen" style="background:#22c55e;border-color:#22c55e;color:white" onclick="beheerAccepteerBod('${k.id}', '${effectiveToken}', '${a.id}', 'geaccepteerd')">Accepteren ✓</button>
+          <button class="mkp-btn mkp-btn-close" onclick="beheerAccepteerBod('${k.id}', '${effectiveToken}', '${a.id}', 'afgewezen')">Afwijzen</button>
         `;
       } else if (isGeaccepteerd) {
         callToAction = `<span style="color:#22c55e;font-weight:700;font-size:13px"><i data-lucide="check-circle" style="width:14px;height:14px;vertical-align:-2px"></i> Bod Geaccepteerd</span>`;
@@ -3148,7 +3202,11 @@ function onAnSortChange(val) {
   applyAnFilters();
 }
 
+let anGeoTimerRef = null;
+let anGeoRequestSeq = 0;
+
 function resetAnFilters() {
+  anGeoRequestSeq += 1;
   anFilterState.zoekterm = '';
   anFilterState.specialismen = new Set(['Badkamer','Keuken','Dak','Aanbouw','Elektra','Schilderwerk','Vloeren','Algemeen']);
   anFilterState.minScore = 0;
@@ -3181,17 +3239,25 @@ document.addEventListener('DOMContentLoaded', () => {
   if (minRev) minRev.addEventListener('change', () => { anFilterState.minReviews = parseInt(minRev.value); applyAnFilters(); });
 });
 
-let anGeoTimerRef = null;
 function onAnRegioInput() {
-  const val = document.getElementById('an-regio-input').value.trim();
+  const inputEl = document.getElementById('an-regio-input');
+  if (!inputEl) return;
+  const val = inputEl.value.trim();
   clearTimeout(anGeoTimerRef);
-  if (val.length < 2) { anFilterState.lat=null;anFilterState.lng=null; document.getElementById('an-radius-wrap').style.display='none'; document.getElementById('an-regio-status').textContent=''; applyAnFilters(); return; }
+  if (val.length < 2) {
+    anGeoRequestSeq += 1;
+    anFilterState.lat=null;anFilterState.lng=null; document.getElementById('an-radius-wrap').style.display='none'; document.getElementById('an-regio-status').textContent=''; applyAnFilters(); return;
+  }
   document.getElementById('an-regio-status').textContent = '⏳ Locatie opzoeken…';
   anGeoTimerRef = setTimeout(async () => {
-    const coords = await fetchCoordsForPostcode(val);
+    const lookupId = ++anGeoRequestSeq;
+    const query = inputEl.value.trim();
+    const coords = await fetchCoordsForPostcode(query);
+    if (lookupId !== anGeoRequestSeq) return;
+    if ((inputEl.value || '').trim() !== query) return;
     if (coords) {
       anFilterState.lat = coords.lat; anFilterState.lng = coords.lng;
-      document.getElementById('an-regio-status').textContent = '✅ ' + (coords.naam||val);
+      document.getElementById('an-regio-status').textContent = '✅ ' + (coords.naam||query);
       document.getElementById('an-radius-wrap').style.display = 'block';
       applyAnFilters();
     } else {
@@ -3217,6 +3283,7 @@ function onAnRadiusChange() {
 }
 
 function clearAnRegio() {
+  anGeoRequestSeq += 1;
   anFilterState.lat=null;anFilterState.lng=null;
   document.getElementById('an-regio-input').value='';
   document.getElementById('an-radius-wrap').style.display='none';
@@ -3614,7 +3681,7 @@ function updateNavFoto() {
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;">
         <button onclick="closeBevestiging();showPage('klussen');switchP('klussen');" style="width:100%;padding:15px;background:#0B1F4A;color:#fff;border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:19px;cursor:pointer;">Bekijk openstaande klussen →</button>
-        <button id="bev-beheer-btn" onclick="closeBevestiging(true);openKlantBeheerFromBev();" style="width:100%;padding:13px;background:transparent;color:#0B1F4A;border:1.5px solid #E4E9F2;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;">Beheer mijn klus direct →</button>
+        <button id="bev-beheer-btn" onclick="openKlantBeheerFromBev();" style="width:100%;padding:13px;background:transparent;color:#0B1F4A;border:1.5px solid #E4E9F2;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;">Beheer mijn klus direct →</button>
       </div>
       <div style="text-align:center;margin-top:18px;padding-top:18px;border-top:1px solid #E4E9F2;">
         <span style="font-size:13px;color:#5A6480;">Wat gebeurt er nu? </span>
