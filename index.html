@@ -1254,7 +1254,7 @@ const PAGE_SIZE = 50;         // laden we meer zodat client-side filter goed wer
 const KLUS_PUBLISH_TIMEOUT_MS = 15000;
 const KLUS_LOAD_TIMEOUT_MS = 12000;
 const PUBLISH_BUTTON_HTML = '<span>Klus publiceren</span><span>→</span>';
-const EMAIL_CHAIN_FUNCTION = 'send-klus-email-chain';
+const EMAIL_CHAIN_FUNCTION = 'resend-email';
 
 // ─── Filter state ──────────────────────────────
 const filterState = {
@@ -1339,9 +1339,11 @@ function setLoadMoreVisibility(visible) {
 
 async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving }) {
   if (!sb || !klusId || !beheerToken || !email || !sb.functions) return;
+  const fnName = String(window.__KLUSHUB_EMAIL_FUNCTION || EMAIL_CHAIN_FUNCTION).trim();
+  if (!fnName) return;
   try {
     const { error } = await withTimeout(
-      sb.functions.invoke(EMAIL_CHAIN_FUNCTION, {
+      sb.functions.invoke(fnName, {
         body: {
           klus_id: klusId,
           beheer_token: beheerToken,
