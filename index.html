@@ -2834,8 +2834,8 @@ function showPage(id) {
   window.scrollTo(0,0);
   if (id==='landing') initReveal();
   if (id==='klussen') loadKlussen();
-  if (id==='aannemers') { if (typeof renderDemoAannemers === 'function') renderDemoAannemers(); if (typeof loadAannemers === 'function') loadAannemers(); }
-  if (id==='faq') openFaqSection('stappenplan', document.querySelector('#page-faq .faq-tab'));
+  if (id==='aannemers') loadAannemers();
+  if (id==='faq') openFaqSection('stappenplan', document.querySelector('.faq-tab'));
 }
 function goLanding(hash) { showPage('landing'); setTimeout(() => { const el=document.querySelector(hash); if(el)el.scrollIntoView({behavior:'smooth'}); }, 80); }
 function switchP(view) {
@@ -3524,50 +3524,20 @@ function updateNavFoto() {
       <div style="background:linear-gradient(135deg,#1A3A7A,#2E5FBE);border-radius:20px;padding:36px;margin-bottom:40px;position:relative;overflow:hidden;">
         <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 85% 50%,rgba(245,194,0,.12) 0%,transparent 70%);pointer-events:none;"></div>
         <div style="position:relative;z-index:1;">
-          <div style="display:inline-flex;align-items:center;gap:7px;background:rgba(245,194,0,.15);border:1px solid rgba(245,194,0,.3);border-radius:100px;padding:6px 16px;font-size:11px;font-weight:700;color:#FFD740;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:18px;"><i data-lucide="hammer" style="width:13px;height:13px;stroke:#FFD740;fill:none;margin:0;"></i> Voor aannemers</div>
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,194,0,.15);border:1px solid rgba(245,194,0,.3);border-radius:100px;padding:5px 14px;font-size:11px;font-weight:700;color:#FFD740;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;"><i data-lucide="hammer" style="width:12px;height:12px;stroke:#FFD740;fill:none;margin:0;"></i> Handleiding</div>
           <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:#fff;margin-bottom:10px;line-height:1.05;">Stappenplan voor<br><span style="color:#F5C200;">aannemers op Klushub</span></h2>
-          <p style="font-size:15px;color:rgba(255,255,255,.65);line-height:1.6;max-width:500px;">Van aanmelden tot klus binnenhalen — alles wat je kunt verwachten als aannemer in 6 stappen.</p>
+          <p style="font-size:15px;color:rgba(255,255,255,.65);line-height:1.6;max-width:500px;">Van aanmelden tot klus binnenhalen en review ontvangen — in 6 stappen uitgelegd.</p>
         </div>
       </div>
       <div class="stappenplan-steps">
-        <div class="sp-step"><div class="sp-step-num">1</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="user-plus" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Maak een account aan</h3>
-          <p>Registreer gratis als aannemer via de <strong>Aannemer Login</strong> knop. Vul je naam, bedrijfsnaam, e-mailadres en specialisme in. De eerste 30 dagen zijn volledig gratis — geen creditcard vereist.</p>
-          <div class="sp-tip"><span><i data-lucide="info" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Een volledig profiel met bedrijfsnaam en specialisme wekt meer vertrouwen bij klanten.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">2</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="search" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Zoek klussen in jouw regio</h3>
-          <p>Ga naar <strong>Openstaande Klussen</strong> en filter op categorie, budget en regio. Je ziet alle projecten van klanten die actief op zoek zijn naar een vakman.</p>
-          <div class="sp-tip"><span><i data-lucide="lightbulb" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Stel de regio-filter in op jouw werkgebied zodat je alleen relevante klussen ziet.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">3</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="send" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Stuur een aanbieding</h3>
-          <p>Klik op <strong>Aanbieden</strong> bij een klus die bij je past. Vul je prijs, doorlooptijd en een persoonlijk bericht in. De klant ontvangt jouw aanbieding direct in zijn beheer-panel.</p>
-          <div class="sp-tip"><span><i data-lucide="message-square" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Aanbiedingen met een persoonlijk bericht worden 3× vaker gekozen dan aanbiedingen met alleen een prijs.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">4</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="clock" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Wacht op reactie van de klant</h3>
-          <p>De klant vergelijkt alle aanbiedingen. Volg de status via <strong>Mijn aanbiedingen</strong> in het dashboard. Je ontvangt een melding zodra de klant een beslissing heeft genomen.</p>
-          <div class="sp-tip"><span><i data-lucide="info" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Stuur meerdere aanbiedingen op verschillende klussen om je kansen te vergroten.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">5</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="phone-call" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Ontvang de contactgegevens en ga aan de slag</h3>
-          <p>Wanneer de klant voor jou kiest ontvang je direct een <strong>e-mailnotificatie met de contactgegevens</strong>. Neem contact op om de klus te bespreken en een startdatum af te spreken.</p>
-          <div class="sp-tip"><span><i data-lucide="check-circle" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Neem snel contact op — klanten waarderen een snelle reactie na acceptatie.</span></div>
-        </div></div>
-        <div class="sp-step"><div class="sp-step-num">6</div><div class="sp-step-body">
-          <div class="step-icon" style="width:40px;height:40px;background:#FFF8D6;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><i data-lucide="star" style="width:20px;height:20px;stroke:#7A5E00;fill:none;margin:0;"></i></div>
-          <h3>Ontvang een review en bouw je reputatie op</h3>
-          <p>Na afronding nodigt Klushub de klant uit om jou een <strong>review te geven</strong> op vijf criteria. Goede reviews versterken je profiel en zorgen ervoor dat je vaker gekozen wordt.</p>
-          <div class="sp-tip"><span><i data-lucide="trending-up" style="width:14px;height:14px;stroke:#5A6480;fill:none;margin:0;"></i></span><span>Aannemers met 10+ reviews worden gemiddeld 60% vaker gekozen dan aannemers zonder reviews.</span></div>
-        </div></div>
+        <div class="sp-step"><div class="sp-step-num">1</div><div class="sp-step-body"><h3>Maak een account aan</h3><p>Registreer gratis via de <strong>Aannemer Login</strong> knop. Vul je naam, bedrijfsnaam, e-mailadres en specialisme in. De eerste 30 dagen zijn volledig gratis.</p><div class="sp-tip"><span><i data-lucide="info" style="width:14px;height:14px;stroke:#7A5E00;fill:none;margin:0;"></i></span><span>Een volledig ingevuld profiel met bedrijfsnaam en specialisme wekt meer vertrouwen bij klanten.</span></div></div></div>
+        <div class="sp-step"><div class="sp-step-num">2</div><div class="sp-step-body"><h3>Zoek klussen in jouw regio</h3><p>Ga naar <strong>Openstaande Klussen</strong> en filter op categorie, budget en regio. Je ziet alle openstaande projecten van klanten die op zoek zijn naar een vakman.</p><div class="sp-tip"><span><i data-lucide="lightbulb" style="width:14px;height:14px;stroke:#7A5E00;fill:none;margin:0;"></i></span><span>Stel de regio-filter in op jouw werkgebied zodat je alleen relevante klussen ziet.</span></div></div></div>
+        <div class="sp-step"><div class="sp-step-num">3</div><div class="sp-step-body"><h3>Stuur een aanbieding</h3><p>Klik op <strong>Aanbieden</strong> bij een passende klus. Vul je prijs, doorlooptijd en een persoonlijk bericht in. De klant ontvangt jouw aanbieding direct.</p><div class="sp-tip"><span><i data-lucide="message-square" style="width:14px;height:14px;stroke:#7A5E00;fill:none;margin:0;"></i></span><span>Aanbiedingen met een persoonlijk bericht worden 3× vaker gekozen dan aanbiedingen met alleen een prijs.</span></div></div></div>
+        <div class="sp-step"><div class="sp-step-num">4</div><div class="sp-step-body"><h3>Wacht op reactie van de klant</h3><p>De klant vergelijkt alle aanbiedingen. Volg de status van jouw aanbieding via <strong>Mijn aanbiedingen</strong> in je dashboard. Je ontvangt een melding zodra er een beslissing is.</p></div></div>
+        <div class="sp-step"><div class="sp-step-num">5</div><div class="sp-step-body"><h3>Ontvang contactgegevens en ga aan de slag</h3><p>Bij acceptatie ontvang je direct een <strong>e-mail met de contactgegevens</strong> van de klant. Neem contact op, bespreek de klus en maak concrete afspraken over startdatum en betaling.</p><div class="sp-tip"><span><i data-lucide="check-circle" style="width:14px;height:14px;stroke:#7A5E00;fill:none;margin:0;"></i></span><span>Neem snel contact op — klanten waarderen een snelle reactie na acceptatie.</span></div></div></div>
+        <div class="sp-step"><div class="sp-step-num">6</div><div class="sp-step-body"><h3>Ontvang een review en bouw je reputatie op</h3><p>Na afronding nodigt Klushub de klant uit om jou een <strong>review te geven</strong> op vijf criteria. Goede reviews versterken je profiel en zorgen dat je vaker gekozen wordt.</p><div class="sp-tip"><span><i data-lucide="trending-up" style="width:14px;height:14px;stroke:#7A5E00;fill:none;margin:0;"></i></span><span>Aannemers met 10+ reviews worden gemiddeld 60% vaker gekozen dan aannemers zonder reviews.</span></div></div></div>
       </div>
-      <div class="faq-cta-box"><h3>Begin vandaag nog!</h3><p>Registreer gratis en ontvang direct toegang tot alle openstaande klussen.</p><button class="btn-p" onclick="openAuth('register')">Gratis registreren →</button></div>
+      <div class="faq-cta-box"><h3>Begin vandaag nog!</h3><p>Registreer gratis als aannemer en ontvang direct toegang tot alle openstaande klussen.</p><button class="btn-p" onclick="openAuth('register')">Gratis registreren →</button></div>
     </div>
 
     <!-- KLANT FAQ -->
