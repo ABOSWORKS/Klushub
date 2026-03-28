@@ -1,0 +1,65 @@
+# LESSONS LEARNED — Klushub Claude Sprint Log
+
+> Gelezen aan het begin van elke sessie. Bijgewerkt aan het eind van elke sprint-turn.
+
+---
+
+## AUTONOMY PROTOCOL (actief vanaf 2026-03-28)
+
+1. **TDD First** — Geen productie-code wijzigen zonder eerst een Playwright test te schrijven die de feature verifieert. Fix is pas "done" als test groen is.
+2. **Journaling** — Dit bestand bijwerken na elke significante sessie.
+3. **Semantic HTML** — `<nav>`, `<section>`, `<article>` waar van toepassing. Eén `<h1>` per pagina.
+4. **Error handling** — Elke Supabase query en DOM selector gewrapt in try/catch of null-check. Fouten duidelijk in console loggen.
+
+---
+
+## Sprint Log
+
+### 2026-03-28 — Come-back sprint (achterstand 2-8 vs Codex)
+
+#### Wat opgelost
+
+**Fixes:**
+- `openFaqSection()` had een silent fail als section-ID niet bestond → fallback naar `#faq-stappenplan` toegevoegd
+- `loadAannemers()` gebruikte nested `.select('*, reviews(...)')` → opgesplist in twee aparte queries; als reviews 400-error geeft val terug naar volledige demo data
+- `onAnRegioInput()` had geen race-condition guard → `anGeoSeq` counter toegevoegd
+- Trust Badges toonden nooit voor echte Supabase aannemers (avg=0 want reviews falen) → badge nu ook op basis van `abonnement === 'pro'`
+- Portfolio grid hing aan hardcoded `d1-d6` demo-IDs → `getPortfolioBySpecialisme()` fallback toegevoegd die op specialisme-string matcht
+
+**Nieuwe features:**
+- Trust Badge systeem (Top Aannemer / Veel Ervaring / Pro Aannemer)
+- Smart Job Match % badge op klus-kaarten (op basis van actieve filters)
+- Klus Status Tracker — 5-staps voortgangsbalk op bevestigingsscherm
+- Foto Portfolio grid in aannemer profiel modal (met lightbox)
+- Animated stats counter op landing (easeOutExpo via rAF)
+- Beschikbaarheidsstatus in aannemer profiel footer
+
+#### Waarom deze keuzes
+
+- **Aparte reviews query**: nested Supabase select faalt bij ontbrekende foreign key of RLS-policy op de reviews tabel. Twee losse queries zijn robuuster en geven individuele error handling.
+- **Specialisme-gebaseerde portfolio**: UUID aannemers uit Supabase hebben nooit een `d1`-`d6` ID. Matching op specialisme-string werkt universeel en schaalt naar echte data.
+- **Abonnement-badge als fallback**: reviews zijn leeg in de DB (400-error op reviews tabel). Abonnement is wél beschikbaar in de aannemers tabel. Zo tonen Pro-aannemers altijd een badge.
+
+#### Bekende openstaande issues
+
+- Supabase `reviews` tabel geeft 400 (waarschijnlijk RLS policy blokkeert publieke reads). Zodra dit gefixt is in Supabase dashboard werken score-gebaseerde badges automatisch.
+- Stat-counter animatie: `animateStatCount()` is geïmplementeerd maar Playwright test moet bevestigen dat de rAF-animatie ook visueel werkt (niet alleen statisch).
+- Smart Job Match % is niet zichtbaar zonder actief filter — overweeg een "hint" tekst in de filter drawer.
+
+#### Volgende logische actie
+
+1. Playwright test schrijven/uitvoeren die visueel bevestigt: FAQ content, Aannemers kaarten, Trust Badge, Portfolio, Bevestigingsscherm Status Tracker.
+2. Als Supabase reviews 400 blijft: controleer RLS policies in Supabase dashboard (public `SELECT` op reviews tabel).
+3. Semantic HTML audit: `<nav>` voor navigatie, `<main>` voor page content, `<section>` voor FAQ secties — kost één commit maar verhoogt SEO-score aanzienlijk.
+
+---
+
+## Architectuur beslissingen (permanent)
+
+| Beslissing | Reden |
+|-----------|-------|
+| Single-file HTML | Zero build complexity, snelle deploys. Geleidelijke extractie later. |
+| Supabase aparte queries | Robuuster dan nested selects bij RLS/FK issues |
+| Demo fallback altijd beschikbaar | Platform werkt altijd — ook als DB down is |
+| Playwright voor QA | Enige manier om te bevestigen dat UI echt werkt, niet alleen in code |
+| `escHtml()` + `escAttr()` overal | XSS-preventie — nooit raw user input in innerHTML |
