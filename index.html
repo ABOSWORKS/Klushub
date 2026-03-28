@@ -1389,6 +1389,7 @@ let aanbiedingSubmitInFlight = false;
 let aanbiedingSubmitStartedAt = 0;
 let mijnAanbiedingenLoadPromise = null;
 let mijnAanbiedingenLoadStartedAt = 0;
+let mijnAanbiedingenLoadSeq = 0;
 let lastEmailChainWarningAt = 0;
 let lastArchiveRunAt = 0;
 const ARCHIVE_THROTTLE_MS = 180000;
@@ -1584,6 +1585,14 @@ function shouldSkipNavKlussenLoad() {
   return false;
 }
 
+function isEdgeAuthStatus(status) {
+  return status === 401 || status === 403;
+}
+
+function isEdgeRetryableStatus(status) {
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
 function registerGlobalAsyncErrorHandlers() {
   const report = (type, err) => {
     const message = String(err?.message || err || 'Onbekende async fout');
@@ -1722,6 +1731,20 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
     showToast(`<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>${message}`, true);
   };
   try {
+    const attempts = [];
+    const parseDetailBody = async (response) => {
+      try {
+        const text = await response.text();
+        if (!text) return null;
+        try {
+          return JSON.parse(text);
+        } catch {
+          return { raw: text };
+        }
+      } catch {
+        return null;
+      }
+    };
     const buildHeaders = (mode = 'jwt') => {
       const headers = {
         'Content-Type': 'application/json',
@@ -1747,26 +1770,33 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       'E-mailketen'
     );
     let requestMode = hasJwtLikeToken ? 'jwt' : 'noauth';
-    let response = await invokeEmailFunction(requestMode);
-    if ((response.status === 401 || response.status === 403) && requestMode === 'jwt' && allowNoAuthFallback) {
+    let response = null;
+    let detailBody = null;
+    const performAttempt = async (mode, reason) => {
+      const startedAt = Date.now();
+      const res = await invokeEmailFunction(mode);
+      const detail = await parseDetailBody(res);
+      attempts.push({
+        attempt: attempts.length + 1,
+        mode,
+        reason,
+        status: res.status,
+        statusText: res.statusText || '',
+        elapsed_ms: Date.now() - startedAt,
+        detail: detail?.error || detail?.message || detail?.details || detail?.likelyCause || detail?.raw || null,
+      });
+      return { response: res, detail };
+    };
+
+    ({ response, detail: detailBody } = await performAttempt(requestMode, 'primary'));
+    if (isEdgeAuthStatus(response.status) && requestMode === 'jwt' && allowNoAuthFallback) {
       console.warn('E-mailketen JWT auth gaf 401/403, probeer no-auth fallback', { requestId });
       requestMode = 'noauth';
-      response = await invokeEmailFunction(requestMode);
+      ({ response, detail: detailBody } = await performAttempt(requestMode, 'auth_fallback'));
     }
-    let detailBody = null;
-    try {
-      const text = await response.text();
-      if (text) {
-        try {
-          detailBody = JSON.parse(text);
-        } catch {
-          detailBody = { raw: text };
-        }
-      } else {
-        detailBody = null;
-      }
-    } catch (parseErr) {
-      detailBody = null;
+    if (isEdgeRetryableStatus(response.status)) {
+      await new Promise(resolve => setTimeout(resolve, 320));
+      ({ response, detail: detailBody } = await performAttempt(requestMode, 'retry_after_retryable_status'));
     }
     if (!response.ok) {
       const detailText = typeof detailBody === 'string'
@@ -1778,6 +1808,7 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
         status: response.status,
         detail: detailText || null,
         mode: requestMode,
+        attempts,
         at: Date.now(),
       };
       trackEvent('email_chain_failed', {
@@ -1789,9 +1820,9 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
         request_id: requestId,
         request_mode: requestMode,
       });
-      console.warn('E-mailketen versturen mislukt:', { status: response.status, detailBody, requestId, requestMode });
+      console.warn('E-mailketen versturen mislukt:', { status: response.status, detailBody, requestId, requestMode, attempts });
       const errMsg = `${String(response.status)} ${String(detailText || '')}`.toLowerCase();
-      if (response.status === 401 || response.status === 403) {
+      if (isEdgeAuthStatus(response.status)) {
         warnEmailFailure('Klus geplaatst, maar e-mailendpoint autorisatie faalde (401/403). Controleer verify-jwt instelling en legacy anon-key.');
       } else
       if (errMsg.includes('test mode') || errMsg.includes('verify') || errMsg.includes('domain')) {
@@ -1810,6 +1841,7 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       status: response.status,
       detail: data,
       mode: requestMode,
+      attempts,
       at: Date.now(),
     };
     trackEvent('email_chain_succeeded', {
@@ -1836,6 +1868,7 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       status: null,
       detail: String(err?.message || err || 'unknown'),
       mode: hasJwtLikeToken ? 'jwt' : 'noauth',
+      attempts: [],
       at: Date.now(),
     };
     console.warn('E-mailketen timeout/mislukt:', err);
@@ -2920,7 +2953,7 @@ async function openMijnKlussen() {
   const overlay = document.getElementById('mijnKlussenOverlay');
   overlay.classList.add('open');
   markOverlayOpen(overlay);
-  await loadMijnKlussen();
+  await loadMijnKlussen({ force: true });
 }
 function closeMijnKlussen() {
   const overlay = document.getElementById('mijnKlussenOverlay');
@@ -2928,14 +2961,17 @@ function closeMijnKlussen() {
   markOverlayClosed(overlay);
 }
 
-async function loadMijnKlussen() {
+async function loadMijnKlussen(options = {}) {
+  const force = options && options.force === true;
   if (mijnAanbiedingenLoadPromise) {
     const maxWait = MIJN_AANBIEDINGEN_MAX_INFLIGHT_MS;
-    if (Date.now() - mijnAanbiedingenLoadStartedAt < maxWait) return mijnAanbiedingenLoadPromise;
+    if (!force && Date.now() - mijnAanbiedingenLoadStartedAt < maxWait) return mijnAanbiedingenLoadPromise;
     console.warn('Vastgelopen "mijn aanbiedingen"-load gedetecteerd. Nieuwe laadpoging gestart.');
     mijnAanbiedingenLoadPromise = null;
     mijnAanbiedingenLoadStartedAt = 0;
   }
+  const requestSeq = ++mijnAanbiedingenLoadSeq;
+  const isLatestLoad = () => requestSeq === mijnAanbiedingenLoadSeq;
   mijnAanbiedingenLoadStartedAt = Date.now();
   mijnAanbiedingenLoadPromise = (async () => {
   const body = document.getElementById('mkp-body');
@@ -2951,17 +2987,26 @@ async function loadMijnKlussen() {
   let data = null;
   let error = null;
   try {
-    const aanbiedingenResult = await withTimeout(
-      sb
-        .from('aanbiedingen')
-        .select('id, klus_id, status, prijs, doorlooptijd, bericht, aangemaakt')
-        .eq('aannemer_id', currentUser.id)
-        .order('aangemaakt', { ascending: false }),
-      MIJN_AANBIEDINGEN_TIMEOUT_MS,
-      'Mijn aanbiedingen laden'
-    );
-    data = aanbiedingenResult?.data || null;
-    error = aanbiedingenResult?.error || null;
+    const aanbiedingAttempts = [
+      { orderColumn: 'aangemaakt', label: 'aangemaakt' },
+      { orderColumn: 'created_at', label: 'created_at' },
+    ];
+    for (const attempt of aanbiedingAttempts) {
+      const aanbiedingenResult = await withTimeout(
+        sb
+          .from('aanbiedingen')
+          .select('id, klus_id, status, prijs, doorlooptijd, bericht, aangemaakt, created_at')
+          .eq('aannemer_id', currentUser.id)
+          .order(attempt.orderColumn, { ascending: false }),
+        MIJN_AANBIEDINGEN_TIMEOUT_MS,
+        `Mijn aanbiedingen laden (${attempt.label})`
+      );
+      data = aanbiedingenResult?.data || null;
+      error = aanbiedingenResult?.error || null;
+      if (!error) break;
+      console.warn(`Mijn aanbiedingen query mislukt (${attempt.label})`, error);
+    }
+    if (!isLatestLoad()) return;
     if (!error && data && data.length > 0) {
       const klusIds = [...new Set(data.map(a => a.klus_id).filter(Boolean))];
       if (klusIds.length > 0) {
@@ -2985,6 +3030,7 @@ async function loadMijnKlussen() {
   } catch (err) {
     error = err;
   }
+  if (!isLatestLoad()) return;
 
   if (error) {
     body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt</div><p style="font-size:13px;margin-top:6px">Probeer het opnieuw over enkele seconden.</p><button class="btn-p" style="font-size:13px;padding:8px 16px;margin-top:12px" onclick="loadMijnKlussen()">Opnieuw laden</button></div>';
@@ -3023,7 +3069,8 @@ async function loadMijnKlussen() {
 
     const budget = k.budget ? `€ ${k.budget.toLocaleString('nl-NL')}` : '—';
     const prijs = aanb.prijs ? `€ ${aanb.prijs.toLocaleString('nl-NL')}` : '—';
-    const datum = new Date(aanb.aangemaakt).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});
+    const datumBron = aanb.aangemaakt || aanb.created_at || null;
+    const datum = datumBron ? new Date(datumBron).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'}) : 'onbekend';
 
     return `
     <div class="mkp-klus" style="border-left: 3px solid ${aColors[ast]}">
@@ -3042,8 +3089,10 @@ async function loadMijnKlussen() {
   try {
     await mijnAanbiedingenLoadPromise;
   } finally {
-    mijnAanbiedingenLoadPromise = null;
-    mijnAanbiedingenLoadStartedAt = 0;
+    if (isLatestLoad()) {
+      mijnAanbiedingenLoadPromise = null;
+      mijnAanbiedingenLoadStartedAt = 0;
+    }
   }
 }
 
@@ -4014,7 +4063,7 @@ function showPage(id) {
   trackEvent('page_view', { page_id: id });
   window.scrollTo(0,0);
   if (id==='landing') initReveal();
-  if (id==='klussen' && !shouldSkipNavKlussenLoad()) void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
+  if (id==='klussen' && !shouldSkipNavKlussenLoad()) void loadKlussen(true, { source: 'foreground' }).catch(err => console.warn('Klussen tonen mislukt:', err));
   if (id==='aannemers') { if (typeof renderDemoAannemers === 'function') renderDemoAannemers(); if (typeof loadAannemers === 'function') loadAannemers(); }
   if (id==='reviews') renderReviewsPage();
   if (id==='faq') openFaqSection('stappenplan', document.querySelector('#page-faq .faq-tab'));
@@ -4028,7 +4077,7 @@ function switchP(view) {
   const t = { plaatsen:['Plaats jouw <em>klus</em>','Gratis en vrijblijvend. Ontvang aanbiedingen.','Klus plaatsen'], klussen:['Openstaande <em>klussen</em>','Bekijk alle projecten en bied jezelf aan.','Openstaande klussen'] }[view];
   document.getElementById('kh-title').innerHTML=t[0]; document.getElementById('kh-sub').textContent=t[1]; document.getElementById('kh-bc').textContent=t[2];
   window.scrollTo({top:0,behavior:'smooth'});
-  if (view==='klussen' && !shouldSkipNavKlussenLoad()) void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
+  if (view==='klussen' && isKlussenViewActive() && !shouldSkipNavKlussenLoad()) void loadKlussen(true, { source: 'foreground' }).catch(err => console.warn('Klussen tonen mislukt:', err));
 }
 function switchHowTab(tab,btn) {
   document.querySelectorAll('.how-tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active');

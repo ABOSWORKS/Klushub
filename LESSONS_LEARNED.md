@@ -37,3 +37,22 @@
 - Volgende logische AI-actie:
   1. Live verificatie in productie: request-id correlatie voor resend 401/502 in Supabase Invocations.
   2. Trust Snapshot Graph (feature 2) op aannemer-profiel en/of reviews-tab implementeren.
+
+## 2026-03-28 (stability follow-up release)
+- Probleem opgelost: `Mijn aanbiedingen` kon vastlopen op oude in-flight loads; e-mailketen gaf te weinig diagnostiek op 401/502; open-klussen navigatie had nog dubbele load-triggers.
+- Keuze:
+  - `loadMijnKlussen({ force: true })` als standaard bij openen overlay, met request-sequence gating en kolom-fallback (`aangemaakt` -> `created_at`).
+  - `triggerKlusEmailChain` uitgebreid met attempt-ledger, auth fallback (401/403) en retry op retryable 5xx-statuscodes.
+  - Navigatiepad aangescherpt zodat `switchP('klussen')` alleen foreground-load start als de klussenpagina actief is.
+  - Nieuwe smoke tests:
+    - `tests/smoke/email-chain-diagnostics.smoke.js`
+    - `tests/smoke/mijn-aanbiedingen-reload.smoke.js`
+- Testevidence:
+  - `node tests/smoke/email-chain-diagnostics.smoke.js` => `EMAIL_CHAIN_DIAGNOSTICS_OK`
+  - `node tests/smoke/mijn-aanbiedingen-reload.smoke.js` => `MIJN_AANBIEDINGEN_RELOAD_OK`
+  - `npm run test:smoke` => `SMOKE_OK`
+  - `node tests/smoke/open-klussen-isolation.smoke.js` => `OPEN_KLUSSEN_ISOLATION_OK`
+  - `node tests/smoke/beheer-vergelijker.smoke.js` => `BEHEER_VERGELIJKER_OK`
+- Volgende logische AI-actie:
+  1. Live check in Supabase Invocations met `x-kh-request-id` correlatie voor laatste e-mailpogingen.
+  2. Zelfde release-ronde: Trust Snapshot Graph op reviews-tab activeren.
