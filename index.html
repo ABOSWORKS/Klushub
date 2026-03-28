@@ -1388,12 +1388,18 @@ function initSupabase() {
 // ══════════════════════════════════════════════════
 async function initAuth() {
   if (!sb) return;
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) await loadProfile(session.user);
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) await loadProfile(session.user);
-    else if (event === 'SIGNED_OUT') { currentUser = null; updateNavAuth(); }
-  });
+  try {
+    const TIMEOUT = 5000;
+    const tout = new Promise((_, rej) => setTimeout(() => rej(new Error('auth-timeout')), TIMEOUT));
+    const { data: { session } } = await Promise.race([sb.auth.getSession(), tout]);
+    if (session?.user) await loadProfile(session.user);
+    sb.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) await loadProfile(session.user);
+      else if (event === 'SIGNED_OUT') { currentUser = null; updateNavAuth(); }
+    });
+  } catch(e) {
+    console.warn('[initAuth] Timeout of fout:', e.message);
+  }
 }
 
 async function loadProfile(user) {
@@ -1516,34 +1522,45 @@ async function loadKlussen(reset = true) {
   if (_loadingKlussen) return;
   _loadingKlussen = true;
   try {
-  if (!sb) { renderDemoKlussen(); return; }
+    if (!sb) { renderDemoKlussen(); return; }
 
-  // Archiveer eerst verlopen klussen
-  await archiveerVerlopenKlussen();
+    // Archiveer verlopen klussen — fire-and-forget: nooit blocken op deze write
+    archiveerVerlopenKlussen().catch(e => console.warn('[archiveer] Fout (niet kritiek):', e.message));
 
-  if (reset) { klussensOffset = 0; allKlussen = []; }
+    if (reset) { klussensOffset = 0; allKlussen = []; }
 
-  // Haal open klussen op — altijd gesorteerd op nieuwste eerst als basis
-  let query = sb
-    .from('klussen')
-    .select('*', { count: 'exact' })
-    .eq('status', 'open')
-    .order('aangemaakt', { ascending: false })
-    .range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
+    // Haal open klussen op met timeout zodat spinner nooit eeuwig blijft staan
+    const TIMEOUT = 6000;
+    const tout = new Promise((_, rej) => setTimeout(() => rej(new Error('klussen-timeout')), TIMEOUT));
+    const result = await Promise.race([
+      sb.from('klussen')
+        .select('*', { count: 'exact' })
+        .eq('status', 'open')
+        .order('aangemaakt', { ascending: false })
+        .range(klussensOffset, klussensOffset + PAGE_SIZE - 1),
+      tout
+    ]);
 
-  const { data, count, error } = await query;
-  if (error) { showToast('Klussen laden mislukt', true); return; }
+    const { data, count, error } = result;
+    if (error) {
+      console.warn('[loadKlussen] DB fout, demo data geladen:', error.message);
+      renderDemoKlussen();
+      return;
+    }
 
-  allKlussen = reset ? (data || []) : [...allKlussen, ...(data || [])];
-  klussensOffset += PAGE_SIZE;
+    allKlussen = reset ? (data || []) : [...allKlussen, ...(data || [])];
+    klussensOffset += PAGE_SIZE;
 
-  document.getElementById('kh-open').textContent = count || allKlussen.length;
+    document.getElementById('kh-open').textContent = count || allKlussen.length;
 
-  // Pas client-side filters toe
-  applyFilters();
+    // Pas client-side filters toe
+    applyFilters();
 
-  const hasMore = count > klussensOffset;
-  document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+    const hasMore = count > klussensOffset;
+    document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+  } catch(e) {
+    console.warn('[loadKlussen] Timeout of fout, demo data geladen:', e.message);
+    renderDemoKlussen();
   } finally { _loadingKlussen = false; }
 }
 
@@ -2096,18 +2113,34 @@ async function loadStats() {
     return;
   }
   const today = new Date().toISOString().split('T')[0];
-  const [{ count: totaal }, { count: aannemers }, { count: vandaag }] = await Promise.all([
-    sb.from('klussen').select('*',{count:'exact',head:true}),
-    sb.from('aannemers').select('*',{count:'exact',head:true}),
-    sb.from('klussen').select('*',{count:'exact',head:true}).gte('aangemaakt',today),
-  ]);
-  const el1 = document.getElementById('stat-aannemers');
-  const el2 = document.getElementById('stat-klussen');
-  if (aannemers) animateStatCount(el1, aannemers, '');
-  else if (el1) el1.textContent = '4.800+';
-  if (totaal) animateStatCount(el2, totaal, '');
-  else if (el2) el2.textContent = '23K';
-  document.getElementById('kh-new').textContent = vandaag || '0';
+  try {
+    const TIMEOUT = 4000;
+    const tout = new Promise((_, rej) => setTimeout(() => rej(new Error('stats-timeout')), TIMEOUT));
+    const results = await Promise.race([
+      Promise.all([
+        sb.from('klussen').select('*',{count:'exact',head:true}),
+        sb.from('aannemers').select('*',{count:'exact',head:true}),
+        sb.from('klussen').select('*',{count:'exact',head:true}).gte('aangemaakt',today),
+      ]),
+      tout
+    ]);
+    const [{ count: totaal }, { count: aannemers }, { count: vandaag }] = results;
+    const el1 = document.getElementById('stat-aannemers');
+    const el2 = document.getElementById('stat-klussen');
+    if (aannemers) animateStatCount(el1, aannemers, '');
+    else if (el1) el1.textContent = '4.800+';
+    if (totaal) animateStatCount(el2, totaal, '');
+    else if (el2) el2.textContent = '23K';
+    document.getElementById('kh-new').textContent = vandaag || '0';
+  } catch(e) {
+    console.warn('[loadStats] Timeout of fout, demo waarden gebruikt:', e.message);
+    const el1 = document.getElementById('stat-aannemers');
+    const el2 = document.getElementById('stat-klussen');
+    animateStatCount(el1, 4800, '+');
+    animateStatCount(el2, 23000, '');
+    const khNew = document.getElementById('kh-new');
+    if (khNew) khNew.textContent = '0';
+  }
 }
 
 // ══════════════════════════════════════════════════
