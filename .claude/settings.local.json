@@ -36,7 +36,15 @@
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
-      "Bash(git -C*)"
+      "Bash(git -C*)",
+      "Bash(supabase --version)",
+      "Bash(npx supabase:*)",
+      "Bash(curl -s -X GET \"https://mzozeayuibnodxdrtbfk.supabase.co/rest/v1/aanbiedingen?limit=0\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16b3plYXl1aWJub2R4ZHJ0YmZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NTI0ODIsImV4cCI6MjA4OTIyODQ4Mn0.TzM4tVmP4KWaroBGbegowFu7cv75xdCEQxpSk8FL7DM\" -w \"\\\\n%{http_code}\\\\n\")",
+      "Bash(curl -s -X GET \"https://mzozeayuibnodxdrtbfk.supabase.co/functions/v1/\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16b3plYXl1aWJub2R4ZHJ0YmZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NTI0ODIsImV4cCI6MjA4OTIyODQ4Mn0.TzM4tVmP4KWaroBGbegowFu7cv75xdCEQxpSk8FL7DM\" -w \"\\\\n%{http_code}\\\\n\")",
+      "Bash(curl -s -X GET \"https://mzozeayuibnodxdrtbfk.supabase.co/rest/v1/aanbiedingen?limit=1\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16b3plYXl1aWJub2R4ZHJ0YmZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NTI0ODIsImV4cCI6MjA4OTIyODQ4Mn0.TzM4tVmP4KWaroBGbegowFu7cv75xdCEQxpSk8FL7DM\" -H \"Accept: application/vnd.pgrst.object+json\")",
+      "Bash(find 'd:/Backup bestanden/Aron/Coding/Klushub/Codex_Workspace/supabase/migrations' -name *.sql)",
+      "Bash(grep -r \"aanbiedingen\\\\|aannemers\" 'd:/Backup bestanden/Aron/Coding/Klushub/Claude_Workspace' --include=*.md)",
+      "Bash(grep -r \"CREATE TABLE.*aanbiedingen\\\\|CREATE TABLE.*aannemers\" 'd:/Backup bestanden/Aron/Coding/Klushub' --include=*.sql)"
     ],
     "additionalDirectories": [
       "D:\\Backup bestanden\\Aron\\Coding\\Klushub\\21 maart backto 1 HTML file\\Codex",
