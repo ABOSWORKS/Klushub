@@ -820,20 +820,21 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:16px;">
       <div style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;">
         <div style="font-size:12px;color:var(--gray-text);margin-bottom:4px;">Lokale betrouwbaarheid</div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--blue-dark);line-height:1;">92/100</div>
+        <div id="rv-trust-score" style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--blue-dark);line-height:1;">92/100</div>
         <div style="font-size:12px;color:var(--gray-text);margin-top:6px;">Score op basis van geverifieerde jobs + recency.</div>
       </div>
       <div style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;">
         <div style="font-size:12px;color:var(--gray-text);margin-bottom:4px;">Geverifieerde reviews</div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--blue-dark);line-height:1;">81%</div>
+        <div id="rv-verified-share" style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--blue-dark);line-height:1;">81%</div>
         <div style="font-size:12px;color:var(--gray-text);margin-top:6px;">Reviews van afgeronde klussen met bevestigde match.</div>
       </div>
       <div style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;">
         <div style="font-size:12px;color:var(--gray-text);margin-bottom:4px;">Actieve regio's</div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--blue-dark);line-height:1;">35+</div>
+        <div id="rv-region-count" style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--blue-dark);line-height:1;">35+</div>
         <div style="font-size:12px;color:var(--gray-text);margin-top:6px;">Steden met consistente reviewdekking.</div>
       </div>
     </div>
+    <div id="reviewsTrustSnapshot" style="margin-bottom:16px;"></div>
     <div id="reviewsPageList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;"></div>
     <div style="margin-top:16px;background:#fff;border:1px dashed var(--gray-border);border-radius:14px;padding:14px;">
       <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:4px;">Nog geen data in productie?</div>
@@ -4793,6 +4794,67 @@ const REVIEWS_PAGE_FALLBACK = [
   { naam: 'Fatima A.', stad: 'Den Haag', score: 4.7, tekst: 'Fijne samenwerking, resultaat is precies wat we wilden.', datum: '2 weken geleden' },
 ];
 
+function getReviewsDimensionSnapshot() {
+  const dims = [
+    { key: 'avg_kwaliteit', label: 'Kwaliteit' },
+    { key: 'avg_communicatie', label: 'Communicatie' },
+    { key: 'avg_prijs_kwaliteit', label: 'Prijs/kw.' },
+    { key: 'avg_tijdigheid', label: 'Tijdigheid' },
+    { key: 'avg_netheid', label: 'Netheid' },
+  ];
+  const aannemers = Array.isArray(allAannemers) ? allAannemers : [];
+  return dims.map((dim) => {
+    const values = aannemers.map(a => Number(a?.[dim.key] || 0)).filter(v => v > 0);
+    const avg = values.length ? (values.reduce((s, v) => s + v, 0) / values.length) : 0;
+    return { label: dim.label, value: avg };
+  });
+}
+
+function renderTrustSnapshotPanel(metrics) {
+  const host = document.getElementById('reviewsTrustSnapshot');
+  if (!host) return;
+  const dims = metrics.dimensions || [];
+  const statusLabel = metrics.dataMode === 'live' ? 'Live' : (metrics.dataMode === 'partial' ? 'Partieel' : 'Mock');
+  const trendText = metrics.trend != null
+    ? (metrics.trend > 0.07 ? 'Stijgend' : (metrics.trend < -0.07 ? 'Dalend' : 'Stabiel'))
+    : 'Onvoldoende data';
+  const confidenceText = metrics.confidence || 'Laag';
+
+  host.innerHTML = `
+    <section style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div>
+          <h3 style="margin:0;font-size:20px;font-family:'Barlow Condensed',sans-serif;font-weight:900;color:var(--text-dark);">Trust Snapshot</h3>
+          <p style="margin:4px 0 0;font-size:13px;color:var(--gray-text);line-height:1.5;">Waarom klanten hier sneller zeker kiezen: direct inzicht in kwaliteit, communicatie, planning en recente prestaties in jouw regio.</p>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--gray-border);background:#F8FAFF;color:var(--blue-dark);">${statusLabel}</span>
+          <span style="font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid #BFDBFE;background:#EFF6FF;color:#1D4ED8;">Confidence: ${confidenceText}</span>
+          <span style="font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid #F5E4A3;background:#FFF7D6;color:#7A5E00;">Trend: ${trendText}</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px;">
+        ${dims.map(d => {
+          const pct = Math.max(0, Math.min(100, Math.round((Number(d.value || 0) / 5) * 100)));
+          return `<div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:12px;color:var(--gray-text);">${d.label}</span>
+              <span style="font-size:12px;font-weight:700;color:var(--blue-dark);">${Number(d.value || 0) > 0 ? Number(d.value).toFixed(1) : '—'}</span>
+            </div>
+            <div style="height:8px;border-radius:999px;background:#E8ECF4;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#F5C200,#2E5FBE);"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;">
+        <div style="font-size:12px;color:var(--gray-text);">KPI focus: Trust Clarity CTR >= 35% en Trust-to-Choice >= 18%</div>
+        <button class="btn-p" style="font-size:12px;padding:8px 12px;" onclick="showToast('<i data-lucide=&quot;check-circle&quot; style=&quot;width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;&quot;></i>Trust-overzicht staat live op deze pagina.')">Bekijk Trust & Reviews</button>
+      </div>
+    </section>`;
+  if (window.lucide) lucide.createIcons();
+}
+
 function renderReviewsPage() {
   const listEl = document.getElementById('reviewsPageList');
   if (!listEl) return;
@@ -4808,16 +4870,49 @@ function renderReviewsPage() {
         score,
         tekst: r.tekst || 'Klantreview zonder toelichting.',
         datum: r.aangemaakt ? new Date(r.aangemaakt).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent',
+        aangemaakt: r.aangemaakt || r.created_at || null,
+        verified: isVerifiedReview(r),
       });
     });
   });
 
   const items = (dynamic.length ? dynamic : REVIEWS_PAGE_FALLBACK).slice(0, 12);
   const avg = items.length ? (items.reduce((s, r) => s + Number(r.score || 0), 0) / items.length) : 0;
+  const regions = new Set(items.map(r => String(r.stad || '').trim().toLowerCase()).filter(Boolean));
+  const verifiedCount = items.filter(r => r.verified === true).length;
+  const dataMode = dynamic.length > 0 ? 'live' : 'mock';
+  const verifiedShare = dataMode === 'mock'
+    ? 81
+    : (items.length ? Math.round((verifiedCount / items.length) * 100) : 0);
+  const trustScore = dataMode === 'mock'
+    ? 92
+    : (items.length ? Math.round(Math.max(0, Math.min(100, (avg / 5) * 100))) : 0);
+  const now = Date.now();
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+  const recentItems = items.filter(r => r.aangemaakt && (now - new Date(r.aangemaakt).getTime()) <= thirtyDaysMs);
+  const olderItems = items.filter(r => r.aangemaakt && (now - new Date(r.aangemaakt).getTime()) > thirtyDaysMs);
+  const recentAvg = recentItems.length ? (recentItems.reduce((s, r) => s + Number(r.score || 0), 0) / recentItems.length) : null;
+  const olderAvg = olderItems.length ? (olderItems.reduce((s, r) => s + Number(r.score || 0), 0) / olderItems.length) : null;
+  const trend = (recentAvg != null && olderAvg != null && olderAvg > 0) ? (recentAvg - olderAvg) : null;
+  const confidence = items.length >= 20 ? 'Hoog' : (items.length >= 8 ? 'Middel' : 'Laag');
+
   const totalEl = document.getElementById('rv-total');
   const avgEl = document.getElementById('rv-avg');
+  const trustEl = document.getElementById('rv-trust-score');
+  const verifiedEl = document.getElementById('rv-verified-share');
+  const regionEl = document.getElementById('rv-region-count');
   if (totalEl) totalEl.textContent = String(items.length);
   if (avgEl) avgEl.textContent = avg > 0 ? avg.toFixed(1) : '—';
+  if (trustEl) trustEl.textContent = `${trustScore}/100`;
+  if (verifiedEl) verifiedEl.textContent = `${verifiedShare}%`;
+  if (regionEl) regionEl.textContent = `${regions.size || 1}+`;
+
+  renderTrustSnapshotPanel({
+    dataMode,
+    confidence,
+    trend,
+    dimensions: getReviewsDimensionSnapshot(),
+  });
 
   listEl.innerHTML = items.map(r => `
     <article style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;">

@@ -56,3 +56,21 @@
 - Volgende logische AI-actie:
   1. Live check in Supabase Invocations met `x-kh-request-id` correlatie voor laatste e-mailpogingen.
   2. Zelfde release-ronde: Trust Snapshot Graph op reviews-tab activeren.
+
+## 2026-03-28 (reviews trust snapshot release)
+- Probleem opgelost: reviews-tab had te weinig onderscheidende inhoud; trust-signalen waren niet expliciet en onvoldoende competitief.
+- Keuze:
+  - Nieuwe `Trust Snapshot` sectie toegevoegd op reviews-pagina met dimensiebalken (kwaliteit, communicatie, prijs/kwaliteit, tijdigheid, netheid).
+  - Dynamische KPI-blokken geactiveerd: trust score, verified share en actieve regio's.
+  - Graceful fallback ingebouwd (`Live` vs `Mock`) zodat de pagina altijd bruikbaar blijft zonder lege states.
+  - Strategy copy geïntegreerd: duidelijke trust-waardepropositie en CTA `Bekijk Trust & Reviews`.
+  - Nieuwe smoke toegevoegd: `tests/smoke/reviews-trust-snapshot.smoke.js`.
+- Testevidence:
+  - `node tests/smoke/reviews-trust-snapshot.smoke.js` => `REVIEWS_TRUST_SNAPSHOT_OK`
+  - `npm run test:smoke` => `SMOKE_OK`
+  - `node tests/smoke/email-chain-diagnostics.smoke.js` => `EMAIL_CHAIN_DIAGNOSTICS_OK`
+  - `node tests/smoke/mijn-aanbiedingen-reload.smoke.js` => `MIJN_AANBIEDINGEN_RELOAD_OK`
+  - `node tests/smoke/open-klussen-isolation.smoke.js` => `OPEN_KLUSSEN_ISOLATION_OK`
+- Volgende logische AI-actie:
+  1. Productie-verificatiepad in Supabase Invocations uitvoeren op 401/502 met `request_id` correlatie.
+  2. Trust Snapshot doortrekken naar aannemer-profielkaarten voor lokale keuze-optimalisatie.
