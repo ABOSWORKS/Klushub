@@ -604,8 +604,54 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 .portfolio-lightbox.open{display:flex}
 .portfolio-lightbox-inner{border-radius:20px;overflow:hidden;max-width:480px;width:100%;box-shadow:0 40px 80px rgba(0,0,0,.6)}
 
+/* ── PRIJS CALCULATOR ───────────────────────────── */
+.prijs-calc-sec{background:linear-gradient(135deg,#f8faff 0%,#eef3ff 100%);padding:80px 0;border-top:1px solid #e8edf8;border-bottom:1px solid #e8edf8}
+.pc-grid{max-width:1100px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.pc-chips{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}
+.pc-chip{padding:8px 16px;border:2px solid #dde3f0;border-radius:10px;background:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:var(--blue-dark);cursor:pointer;transition:all .2s;user-select:none}
+.pc-chip:hover{border-color:var(--blue-dark);background:#f0f4ff}
+.pc-chip.active{border-color:var(--blue-dark);background:var(--blue-dark);color:#fff}
+.pc-slider-wrap{margin:24px 0}
+.pc-slider-label{display:flex;justify-content:space-between;font-size:13px;color:var(--gray-text);margin-bottom:8px}
+.pc-slider-label span{font-weight:700;color:var(--blue-dark)}
+input[type=range].pc-slider{width:100%;height:6px;border-radius:3px;accent-color:var(--blue-dark);cursor:pointer}
+.pc-right{background:#fff;border-radius:24px;padding:36px;box-shadow:0 8px 40px rgba(11,31,74,.1);border:2px solid #e8edf8;position:sticky;top:100px}
+.pc-result-label{font-size:13px;color:var(--gray-text);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:600}
+.pc-price-range{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;color:var(--blue-dark);line-height:1;margin-bottom:6px;transition:all .3s}
+.pc-price-sub{font-size:13px;color:var(--gray-text);margin-bottom:24px}
+.pc-breakdown{background:#f8faff;border-radius:12px;padding:16px;margin-bottom:24px}
+.pc-breakdown-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid #eef1f8;color:var(--text-dark)}
+.pc-breakdown-row:last-child{border-bottom:none;font-weight:700;font-size:14px}
+.pc-cta-btn{width:100%;padding:14px;background:var(--yellow);color:var(--blue-dark);border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;cursor:pointer;transition:all .2s}
+.pc-cta-btn:hover{background:#ffc900;transform:translateY(-1px);box-shadow:0 4px 16px rgba(255,185,0,.4)}
+.pc-disclaimer{font-size:11px;color:var(--gray-text);text-align:center;margin-top:10px}
+
+/* ── ACTIVITEITSFEED ─────────────────────────────── */
+.af-sec{background:var(--blue-dark);padding:60px 0}
+.af-header{text-align:center;margin-bottom:32px}
+.af-live-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:6px 16px;margin-bottom:16px}
+.af-live-dot{width:8px;height:8px;background:#22c55e;border-radius:50%;animation:livePulse 1.4s ease-in-out infinite}
+@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.af-live-text{font-size:12px;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px}
+.af-feed-wrap{max-width:900px;margin:0 auto;padding:0 24px;overflow:hidden;height:310px;position:relative}
+.af-feed-wrap::before,.af-feed-wrap::after{content:'';position:absolute;left:0;right:0;height:50px;z-index:2;pointer-events:none}
+.af-feed-wrap::before{top:0;background:linear-gradient(to bottom,var(--blue-dark),transparent)}
+.af-feed-wrap::after{bottom:0;background:linear-gradient(to top,var(--blue-dark),transparent)}
+#af-list{display:flex;flex-direction:column;gap:10px}
+.af-item{display:flex;align-items:center;gap:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 18px;animation:afSlideIn .5s ease}
+@keyframes afSlideIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+.af-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.af-icon.klus{background:rgba(255,185,0,.2)}
+.af-icon.review{background:rgba(34,197,94,.2)}
+.af-icon.match{background:rgba(99,102,241,.2)}
+.af-icon.voltooid{background:rgba(6,182,212,.2)}
+.af-content{flex:1;min-width:0}
+.af-titel{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.af-sub{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px}
+.af-tijd{font-size:11px;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;margin-left:8px}
+
 /* ── RESPONSIVE ──────────────────────────────── */
-@media(max-width:960px){.sidebar,.kh-stats{display:none}.hero{grid-template-columns:1fr;padding:100px 5vw 60px;gap:36px}.score-sec{grid-template-columns:1fr;gap:40px}.price-grid{grid-template-columns:1fr}.foot-top{grid-template-columns:1fr 1fr}.place-full{padding:28px 24px}.perks{grid-template-columns:repeat(3,1fr)}.mobile-filter-btn{display:flex}}
+@media(max-width:960px){.sidebar,.kh-stats{display:none}.hero{grid-template-columns:1fr;padding:100px 5vw 60px;gap:36px}.score-sec{grid-template-columns:1fr;gap:40px}.price-grid{grid-template-columns:1fr}.foot-top{grid-template-columns:1fr 1fr}.place-full{padding:28px 24px}.perks{grid-template-columns:repeat(3,1fr)}.mobile-filter-btn{display:flex}.pc-grid{grid-template-columns:1fr}.pc-right{position:static}}
 @media(max-width:640px){.nav-links{display:none}.hamburger{display:block}.foot-top{grid-template-columns:1fr}.foot-bot{flex-direction:column;gap:8px;text-align:center}.kbody{padding:14px 4vw 40px}.klus-card{padding:18px}.ptab{padding:0 18px}.ptab-sub{display:none}.perks{grid-template-columns:1fr}.place-full{margin:16px}.pr2,.hf-row-2,.form-row-2,.arow2{grid-template-columns:1fr}.auth-body{padding:20px}.bev-body{padding:20px 18px}.bev-top{padding:28px 18px 22px}.faq-content{padding:28px 4vw 60px}.review-body{padding:18px}.review-row{flex-direction:column;align-items:flex-start;gap:6px}.faq-tabs-bar{overflow-x:auto;-webkit-overflow-scrolling:touch}.faq-tab{padding:14px 16px;font-size:13px}}
 
 </style>
@@ -811,6 +857,39 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
   </div>
 </section>
 
+<!-- ══ PRIJS CALCULATOR ═══════════════════════════════ -->
+<section class="prijs-calc-sec reveal" id="prijscalculator">
+  <div class="pc-grid">
+    <div class="pc-left">
+      <div class="sl">Prijsindicatie</div>
+      <div class="st">Wat kost<br><span>jouw klus?</span></div>
+      <p class="ss">Selecteer het type klus en de omvang — en krijg direct een realistische prijsindicatie. Gratis en vrijblijvend.</p>
+      <div class="pc-chips" id="pc-chips-list"><!-- JS vult dit --></div>
+      <div class="pc-slider-wrap">
+        <div class="pc-slider-label">
+          <span>Oppervlakte / scope</span>
+          <span id="pc-m2-label">30 m²</span>
+        </div>
+        <input type="range" class="pc-slider" id="pc-m2-slider" min="5" max="200" value="30" oninput="updatePriceCalc()">
+      </div>
+    </div>
+    <div class="pc-right">
+      <div class="pc-result-label">Geschatte prijs</div>
+      <div class="pc-price-range" id="pc-prijs-output">Kies een type →</div>
+      <div class="pc-price-sub" id="pc-prijs-sub">Selecteer een klus-type hierboven</div>
+      <div class="pc-breakdown" id="pc-breakdown" style="display:none">
+        <div class="pc-breakdown-row"><span>Materialen (schatting)</span><span id="pc-mat">—</span></div>
+        <div class="pc-breakdown-row"><span>Arbeidskosten</span><span id="pc-arbeid">—</span></div>
+        <div class="pc-breakdown-row"><span>Totaal bandbreedte</span><span id="pc-totaal">—</span></div>
+      </div>
+      <button class="pc-cta-btn" onclick="showPage('klussen');switchP('plaatsen')">
+        Ontvang exacte offertes →
+      </button>
+      <p class="pc-disclaimer">* Indicatieve schatting. Exacte offerte via lokale aannemers is altijd nauwkeuriger.</p>
+    </div>
+  </div>
+</section>
+
 <section class="social" id="aannemers">
   <div class="sl">Aannemers op Klushub</div>
   <div class="st">Geverifieerde vakmensen,<br><span>directe reviews</span></div>
@@ -856,6 +935,20 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
     <div class="price-card reveal"><div class="pname">Starter</div><div class="pamount">Gratis</div><div class="pperiod">voor klanten</div><ul class="pfeats"><li>Onbeperkt klussen plaatsen</li><li>Aanbiedingen ontvangen &amp; vergelijken</li><li>Reviews lezen &amp; schrijven</li><li>Veilig communiceren</li></ul><button class="pbtn pbtn-o">Account aanmaken</button></div>
     <div class="price-card ft reveal" style="transition-delay:.1s"><div class="pop-badge"><i data-lucide="star" style="width:14px;height:14px;fill:currentColor;stroke:none;vertical-align:-2px;margin-right:4px"></i>Meest gekozen</div><div class="pname">Pro Aannemer</div><div class="pamount" style="color:var(--yellow)">€ 49</div><div class="pperiod">per maand</div><ul class="pfeats"><li>Onbeperkt aanbiedingen doen</li><li>Verified badge op profiel</li><li>Prioriteit in zoekresultaten</li><li>Review-widget voor eigen site</li><li>Maandelijkse statistieken</li></ul><button class="pbtn pbtn-y" onclick="openAuth('register')">Begin vandaag</button></div>
     <div class="price-card reveal" style="transition-delay:.2s"><div class="pname">Business</div><div class="pamount">€ 129</div><div class="pperiod">per maand</div><ul class="pfeats"><li>Alles uit Pro</li><li>Tot 5 medewerkerprofielen</li><li>Featured plaatsing in regio</li><li>Dedicated accountmanager</li><li>API-koppeling (CRM/planning)</li></ul><button class="pbtn pbtn-o">Neem contact op</button></div>
+  </div>
+</section>
+
+<!-- ══ LIVE ACTIVITEITSFEED ════════════════════════════ -->
+<section class="af-sec" id="activiteitsfeed">
+  <div class="af-header">
+    <div class="af-live-badge">
+      <span class="af-live-dot"></span>
+      <span class="af-live-text">Live activiteit</span>
+    </div>
+    <div class="st" style="color:#fff;margin:0 auto;max-width:400px">Klushub<br><span>in actie</span></div>
+  </div>
+  <div class="af-feed-wrap">
+    <div id="af-list"><!-- JS vult dit --></div>
   </div>
 </section>
 
@@ -3760,6 +3853,128 @@ function updateNavFoto() {
 
 
 
+// ══════════════════════════════════════════════════
+// 13. PRIJS CALCULATOR
+// ══════════════════════════════════════════════════
+const PRIJS_DATA = {
+  'Badkamer':      { per_m2: [450, 900],   basis: 800,  mat_pct: 0.45 },
+  'Keuken':        { per_m2: [300, 700],   basis: 600,  mat_pct: 0.50 },
+  'Dak & Gevel':   { per_m2: [200, 500],   basis: 1500, mat_pct: 0.35 },
+  'Aanbouw':       { per_m2: [900, 1800],  basis: 2000, mat_pct: 0.55 },
+  'Elektra':       { per_m2: [80, 200],    basis: 500,  mat_pct: 0.30 },
+  'Schilderwerk':  { per_m2: [20, 60],     basis: 300,  mat_pct: 0.25 },
+  'Vloeren':       { per_m2: [35, 120],    basis: 200,  mat_pct: 0.40 },
+  'Overig':        { per_m2: [100, 300],   basis: 400,  mat_pct: 0.38 },
+};
+let pcSelectedType = null;
+
+function initPriceCalc() {
+  const chipsList = document.getElementById('pc-chips-list');
+  if (!chipsList) return;
+  chipsList.innerHTML = '';
+  Object.keys(PRIJS_DATA).forEach(function(type) {
+    const chip = document.createElement('button');
+    chip.className = 'pc-chip';
+    chip.textContent = type;
+    chip.onclick = function() {
+      document.querySelectorAll('.pc-chip').forEach(function(c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+      pcSelectedType = type;
+      updatePriceCalc();
+    };
+    chipsList.appendChild(chip);
+  });
+}
+
+function updatePriceCalc() {
+  const slider = document.getElementById('pc-m2-slider');
+  const m2 = slider ? parseInt(slider.value) : 30;
+  const lbl = document.getElementById('pc-m2-label');
+  if (lbl) lbl.textContent = m2 + ' m\u00B2';
+
+  if (!pcSelectedType) return;
+
+  const d = PRIJS_DATA[pcSelectedType];
+  if (!d) return;
+  const minPrijs = Math.round((d.basis + d.per_m2[0] * m2) / 100) * 100;
+  const maxPrijs = Math.round((d.basis + d.per_m2[1] * m2) / 100) * 100;
+
+  function fmt(n) { return '\u20AC\u00A0' + n.toLocaleString('nl-NL'); }
+
+  const out = document.getElementById('pc-prijs-output');
+  if (out) out.textContent = fmt(minPrijs) + ' \u2014 ' + fmt(maxPrijs);
+  const sub = document.getElementById('pc-prijs-sub');
+  if (sub) sub.textContent = 'Voor een ' + pcSelectedType.toLowerCase() + ' van ca. ' + m2 + ' m\u00B2';
+
+  const matMin = Math.round(minPrijs * d.mat_pct / 50) * 50;
+  const matMax = Math.round(maxPrijs * d.mat_pct / 50) * 50;
+  const arbMin = minPrijs - matMin;
+  const arbMax = maxPrijs - matMax;
+
+  const matEl = document.getElementById('pc-mat');
+  if (matEl) matEl.textContent = fmt(matMin) + ' \u2014 ' + fmt(matMax);
+  const arbEl = document.getElementById('pc-arbeid');
+  if (arbEl) arbEl.textContent = fmt(arbMin) + ' \u2014 ' + fmt(arbMax);
+  const totEl = document.getElementById('pc-totaal');
+  if (totEl) totEl.textContent = fmt(minPrijs) + ' \u2014 ' + fmt(maxPrijs);
+  const bd = document.getElementById('pc-breakdown');
+  if (bd) bd.style.display = 'block';
+}
+
+// ══════════════════════════════════════════════════
+// 14. LIVE ACTIVITEITSFEED
+// ══════════════════════════════════════════════════
+const AF_ITEMS = [
+  { type:'klus',    icon:'\uD83D\uDD28', titel:'Nieuwe klus in Amsterdam',   sub:'Badkamer renovatie \u2014 \u20AC 4.500',      tijd:'zojuist' },
+  { type:'review',  icon:'\u2B50',       titel:'Remco Bakker ontving 5\u2605', sub:'Door: Sandra V. uit Amsterdam',           tijd:'2 min geleden' },
+  { type:'match',   icon:'\u2705',       titel:'Klus gekoppeld in Rotterdam', sub:'Dakkapel \u2014 3 aanbiedingen',            tijd:'4 min geleden' },
+  { type:'klus',    icon:'\uD83D\uDD28', titel:'Nieuwe klus in Utrecht',      sub:'Keuken renovatie \u2014 \u20AC 12.000',     tijd:'6 min geleden' },
+  { type:'voltooid',icon:'\uD83C\uDFC6', titel:'Klus voltooid in Den Haag',   sub:'Elektra \u2014 klant geeft 4.8\u2605',     tijd:'9 min geleden' },
+  { type:'review',  icon:'\u2B50',       titel:'Jan van Dijk ontving 4\u2605', sub:'Door: Thomas H. uit Utrecht',             tijd:'11 min geleden' },
+  { type:'klus',    icon:'\uD83D\uDD28', titel:'Nieuwe klus in Haarlem',      sub:'Schilderwerk \u2014 \u20AC 2.800',          tijd:'13 min geleden' },
+  { type:'match',   icon:'\u2705',       titel:'Klus gekoppeld in Amsterdam', sub:'Badkamer \u2014 4 aanbiedingen',           tijd:'15 min geleden' },
+  { type:'voltooid',icon:'\uD83C\uDFC6', titel:'Klus voltooid in Rotterdam',  sub:'Aanbouw \u2014 klant geeft 5\u2605',       tijd:'18 min geleden' },
+  { type:'klus',    icon:'\uD83D\uDD28', titel:'Nieuwe klus in Breda',        sub:'Vloeren leggen \u2014 \u20AC 3.200',        tijd:'21 min geleden' },
+  { type:'review',  icon:'\u2B50',       titel:'Lisa Jansen ontving 5\u2605', sub:'Door: Mark K. uit Rotterdam',              tijd:'24 min geleden' },
+  { type:'klus',    icon:'\uD83D\uDD28', titel:'Nieuwe klus in Eindhoven',    sub:'Dak renovatie \u2014 \u20AC 8.000',         tijd:'27 min geleden' },
+  { type:'match',   icon:'\u2705',       titel:'Klus gekoppeld in Utrecht',   sub:'Schilderwerk \u2014 2 aanbiedingen',       tijd:'30 min geleden' },
+  { type:'voltooid',icon:'\uD83C\uDFC6', titel:'Klus voltooid in Leiden',     sub:'Badkamer \u2014 klant geeft 5\u2605',      tijd:'33 min geleden' },
+];
+
+let afIndex = 0;
+let afTimer = null;
+
+function buildAfItem(item) {
+  const div = document.createElement('div');
+  div.className = 'af-item';
+  div.innerHTML = '<div class="af-icon ' + escHtml(item.type) + '"><span>' + item.icon + '</span></div>'
+    + '<div class="af-content"><div class="af-titel">' + escHtml(item.titel) + '</div>'
+    + '<div class="af-sub">' + escHtml(item.sub) + '</div></div>'
+    + '<div class="af-tijd">' + escHtml(item.tijd) + '</div>';
+  return div;
+}
+
+function initActiviteitsFeed() {
+  const list = document.getElementById('af-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const startItems = AF_ITEMS.slice(0, 5);
+  startItems.forEach(function(item) { list.appendChild(buildAfItem(item)); });
+  afIndex = 5;
+
+  if (afTimer) clearInterval(afTimer);
+  afTimer = setInterval(function() {
+    const item = AF_ITEMS[afIndex % AF_ITEMS.length];
+    const freshItem = { type: item.type, icon: item.icon, titel: item.titel, sub: item.sub, tijd: 'zojuist' };
+    const newEl = buildAfItem(freshItem);
+    list.insertBefore(newEl, list.firstChild);
+    afIndex++;
+    while (list.children.length > 6) {
+      list.removeChild(list.lastChild);
+    }
+  }, 3500);
+}
+
 // Wait for Supabase and Lucide libraries to load before initializing (max 8s)
 async function waitForLibraries() {
   const deadline = Date.now() + 8000;
@@ -3784,6 +3999,10 @@ async function waitForLibraries() {
   updateNavAuth();
   if (!ok) renderDemoKlussen();
   if (window.lucide) lucide.createIcons();
+
+  // Nieuwe features initialiseren
+  initPriceCalc();
+  initActiviteitsFeed();
 
   // Controleer of er een "Magische Beheer Link" in de URL staat!
   const urlParams = new URLSearchParams(window.location.search);

@@ -15,6 +15,42 @@
 
 ## Sprint Log
 
+### 2026-03-28 — Patch 2: Site-brede loading failures gefixed
+
+#### Wat opgelost
+
+**Root cause van "de hele site werkt niet":**
+- `loadStats()` werd `await`-ed in de async init-chain zonder timeout of try/catch
+- Elke trage/hangende Supabase query (SELECT COUNT op klussen/aannemers) blokkeerde de **gehele** initialisatie
+- Gevolg: `initReveal()`, `updateNavAuth()`, `lucide.createIcons()` nooit uitgevoerd → icons blank, nav broken, alle tabs broken
+
+**Tweede root cause:**
+- `archiveerVerlopenKlussen()` was `await`-ed in `loadKlussen()` — UPDATE query zonder timeout
+- Als deze hing: `_loadingKlussen = true` voor altijd → klussen spinner nooit opgelost
+
+**Fixes:**
+- `loadStats()`: `Promise.race([Promise.all([...queries]), 4s_timeout])` + try/catch → demo stats als fallback
+- `loadKlussen()`: archiveer is nu fire-and-forget (`.catch`), 6s timeout op hoofdquery, `renderDemoKlussen()` fallback bij elke fout
+- `initAuth()`: 5s timeout op `getSession()` zodat trage auth het init niet blokkeert
+
+**TDD:**
+- `tests/timeout_fix.spec.ts`: Playwright test met mock Supabase die nooit resolvet
+- Test verifieert: klussen (31 demo), FAQ, aannemers (9 demo) laden binnen timeout
+- 7/7 tests groen
+
+**Kritieke les (nooit vergeten):**
+- TypeScript type annotations (`as any`, `: string`, `(e as Error)`) zijn NIET geldig in `<script>` HTML blocks
+- Dit veroorzaakte een SyntaxError die het HELE script block brak
+- Fix: gebruik gewone JS. `e.message` ipv `(e as Error).message`
+
+#### Volgende logische actie
+
+1. GitHub Pages deploy checken (push is gedaan naar `claude/klushub-platform`)
+2. Live site testen: navigeer naar alle tabs, check dat de spinners oplossen
+3. Score toevoegen aan Gemini Regulator Leaderboard.md
+
+---
+
 ### 2026-03-28 — Come-back sprint (achterstand 2-8 vs Codex)
 
 #### Wat opgelost
