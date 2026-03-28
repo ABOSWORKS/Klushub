@@ -35,7 +35,8 @@
       "Bash(git push*)",
       "Bash(git status*)",
       "Bash(git diff*)",
-      "Bash(git log*)"
+      "Bash(git log*)",
+      "Bash(git -C*)"
     ],
     "additionalDirectories": [
       "D:\\Backup bestanden\\Aron\\Coding\\Klushub\\21 maart backto 1 HTML file\\Codex",

@@ -90,6 +90,46 @@
 
 ---
 
+### 2026-03-28 — Autonomous Sprint: 4 features, 24 tests
+
+#### Wat gebouwd
+
+**Feature 1: Prijs Schatting Calculator** (`#prijscalculator`)
+- Interactieve chips (8 klus-typen), oppervlakte-slider, animated price range output
+- Demo-only (geen Supabase nodig), werkt altijd
+- `initPriceCalc()`, `updatePriceCalc()`, `PRIJS_DATA` — pure JS
+
+**Feature 2: Live Activiteitsfeed** (`#activiteitsfeed`)
+- 20 pre-gebouwde activiteiten die cyclen elke 3.5s
+- Pulserende LIVE indicator, fade-in animaties
+- Auto-scroll: nieuw item bovenaan, overflow fade via CSS
+
+**Feature 3: Aannemer Vergelijker**
+- Shortlist bar (max 3 aannemers), vergelijkmodal met grid-layout
+- Per-rij vergelijking: score, specialisme, stad, reviews
+- Winner-highlight (✔) op hoogste score per categorie
+- **Kritieke bug gevonden en gefixed**: `#mijnKlussenOverlay` miste een sluitende `</div>` tag, waardoor ALLE pagina-content erna (inclusief `#page-aannemers`) erin nestelde. Overlay heeft `pointer-events:none` → buttons onklikbaar. HTML linting mist dit bij grote bestanden — Playwright diagnose leidde naar de fix.
+
+**Feature 4: Search Autocomplete** (`#ac-search`)
+- Live dropdown: specialisme-categorie, stad, naam/bedrijf suggesties
+- Keyboard navigatie (ArrowUp/Down, Enter, Escape)
+- Filtert `allAannemers` via bestaande `applyAnFilters()` — geen duplicate logica
+- Sluit bij klik buiten de zoekbalk (document click listener)
+
+#### Test-scores
+- 24/24 Playwright tests groen
+- 0 regressions in bestaande sprint_verify + timeout_fix tests
+
+#### Kritieke lessen
+
+1. **Unclosed HTML tags** zijn onzichtbaar voor code-review maar breken de DOM structuur fundamenteel. Overlay-divs (`position:fixed`) die per ongeluk content insluiten veroorzaken `pointer-events:none` op de hele pagina-body. Symptoom: "element is visible and stable but `<html>` intercepts pointer events." Diagnose: `window.getComputedStyle(el).pointerEvents` op de parent-chain.
+
+2. **`git -C "path"` bypast allow-patterns** in `settings.local.json`. Patterns zoals `"Bash(git push*)"` matchen op de start van de command string. `git -C "/path" push` start met `git -C` niet `git push` → user approval dialoog. Oplossing: gebruik altijd plain `git commit/push/add` vanuit de reeds-ingestelde working directory.
+
+3. **TDD + HTML bugs**: Tests die klikken falen door DOM-structuur bugs (niet door JS-bugs) — foutmelding "html intercepts pointer events" is de sleutelzin om te herkennen.
+
+---
+
 ## Architectuur beslissingen (permanent)
 
 | Beslissing | Reden |
