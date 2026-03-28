@@ -17,3 +17,8 @@
   1. Commit + push van deze patchset naar `codex/klushub-platform`.
   2. Live verificatie met Supabase Invocations op één publish + één aanbieding (request-id correleren met `__KH_LAST_EMAIL_CHAIN`).
   3. Indien nog 401: function setting `Verify JWT with legacy secret` uitzetten of legacy JWT anon key in frontend bevestigen.
+
+## 2026-03-28 (autonomy skill)
+- Probleem opgelost: protocol-werkwijze was mondeling afgesproken maar niet als herbruikbare skill vastgelegd.
+- Keuze: een lokale custom skill `autonomy-protocol-ops` gemaakt en gevalideerd, zodat elke sprint consistent dezelfde TDD/journaling/semantic/error-handling regels volgt.
+- Volgende logische AI-actie: skill meenemen in volgende implementatie-rondes en periodiek bijwerken bij nieuwe werkafspraken.
