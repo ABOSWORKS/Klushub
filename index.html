@@ -626,6 +626,49 @@ input[type=range].pc-slider{width:100%;height:6px;border-radius:3px;accent-color
 .pc-cta-btn:hover{background:#ffc900;transform:translateY(-1px);box-shadow:0 4px 16px rgba(255,185,0,.4)}
 .pc-disclaimer{font-size:11px;color:var(--gray-text);text-align:center;margin-top:10px}
 
+/* ── AANNEMER VERGELIJKER ────────────────────────── */
+.vgl-btn{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--blue-dark);background:#f0f4ff;border:1.5px solid #dde3f0;border-radius:8px;padding:5px 10px;cursor:pointer;transition:all .2s;margin-top:10px;width:100%}
+.vgl-btn:hover{background:#e0e8ff;border-color:var(--blue-dark)}
+.vgl-btn.active{background:var(--blue-dark);color:#fff;border-color:var(--blue-dark)}
+.vgl-btn.active:hover{background:#0d2a5e}
+/* Vergelijk floating bar */
+#vgl-bar{position:fixed;bottom:0;left:0;right:0;z-index:1500;background:var(--blue-dark);color:#fff;padding:14px 24px;display:none;align-items:center;justify-content:space-between;box-shadow:0 -4px 24px rgba(11,31,74,.25);animation:slideUpBar .3s ease}
+#vgl-bar.open{display:flex}
+@keyframes slideUpBar{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.vgl-bar-info{display:flex;align-items:center;gap:12px}
+.vgl-bar-avatars{display:flex;gap:6px}
+.vgl-bar-av{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px}
+.vgl-bar-txt{font-size:14px;font-weight:600}
+.vgl-bar-txt span{color:var(--yellow);font-weight:900}
+.vgl-bar-btns{display:flex;gap:10px;align-items:center}
+#vgl-nu-btn{padding:10px 22px;background:var(--yellow);color:var(--blue-dark);border:none;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;cursor:pointer;transition:all .2s}
+#vgl-nu-btn:hover{background:#ffc900;transform:translateY(-1px)}
+.vgl-clear-btn{padding:8px 14px;background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);border-radius:8px;font-size:12px;cursor:pointer;transition:all .2s}
+.vgl-clear-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+/* Vergelijk modal */
+#vglModal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.65);display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+#vglModal.open{display:flex}
+.vgl-modal-inner{background:#fff;border-radius:24px;max-width:900px;width:100%;box-shadow:0 40px 80px rgba(0,0,0,.25);overflow:hidden}
+.vgl-modal-head{background:var(--blue-dark);color:#fff;padding:22px 28px;display:flex;align-items:center;justify-content:space-between}
+.vgl-modal-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900}
+.vgl-close{background:transparent;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .2s}
+.vgl-close:hover{background:rgba(255,255,255,.1);color:#fff}
+#vgl-modal-grid{display:grid;gap:0;padding:0}
+.vgl-col{padding:24px 28px;border-right:1px solid #f0f4ff}
+.vgl-col:last-child{border-right:none}
+.vgl-col-header{text-align:center;padding-bottom:20px;border-bottom:2px solid #f0f4ff;margin-bottom:20px}
+.vgl-col-av{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,var(--blue-mid),var(--blue-light));display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:#fff;margin:0 auto 10px}
+.vgl-col-naam{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--blue-dark);text-align:center}
+.vgl-col-spec{font-size:12px;color:var(--gray-text);text-align:center;margin-top:2px}
+.vgl-row{display:grid;border-bottom:1px solid #f0f4ff;padding:0}
+.vgl-row-label{background:#f8faff;padding:11px 14px;font-size:12px;font-weight:700;color:var(--gray-text);text-transform:uppercase;letter-spacing:.5px}
+.vgl-cell{padding:11px 28px;font-size:14px;color:var(--text-dark);border-right:1px solid #f0f4ff;display:flex;align-items:center}
+.vgl-cell:last-child{border-right:none}
+.vgl-score-bar{display:flex;align-items:center;gap:8px;width:100%}
+.vgl-score-bg{flex:1;height:6px;background:#f0f4ff;border-radius:3px;overflow:hidden}
+.vgl-score-fill{height:100%;background:linear-gradient(90deg,var(--yellow),var(--blue-light));border-radius:3px;transition:width .6s ease}
+.vgl-winner{color:var(--green);font-weight:700}
+
 /* ── ACTIVITEITSFEED ─────────────────────────────── */
 .af-sec{background:var(--blue-dark);padding:60px 0}
 .af-header{text-align:center;margin-bottom:32px}
@@ -1301,6 +1344,7 @@ input[type=range].pc-slider{width:100%;height:6px;border-radius:3px;accent-color
     <div class="mkp-body" id="mkp-body">
       <div class="mkp-empty"><div class="e-ico"><i data-lucide="inbox" style="width:40px;height:40px;opacity:0.5;margin:0 auto 12px"></i></div><div style="font-size:15px;font-weight:600">Laden…</div></div>
     </div>
+  </div>
 </div>
 
 <!-- ══ KLANT BEHEER PANEL (frictieloze beheerflow voor klanten) ══════════════════ -->
@@ -3457,23 +3501,29 @@ function buildAnnemerCard(a) {
   const isPro = a.abonnement === 'pro' || a.abonnement === 'business';
   const trustBadges = getAnnemerTrustBadges(a);
   return `
-  <div class="con-card" onclick="openAannemerProfiel('${a.id}')" style="cursor:pointer;">
-    <div class="con-top">
-      <div class="av" style="overflow:hidden;">${avHtml}</div>
-      ${isPro ? '<div class="vrf"><i data-lucide="check" style="width:11px;height:11px;stroke:var(--green);fill:none;margin:0;"></i> Geverifieerd</div>' : ''}
+  <div class="con-card" data-id="${escAttr(a.id)}" style="cursor:pointer;">
+    <div onclick="openAannemerProfiel('${escAttr(a.id)}')">
+      <div class="con-top">
+        <div class="av" style="overflow:hidden;">${avHtml}</div>
+        ${isPro ? '<div class="vrf"><i data-lucide="check" style="width:11px;height:11px;stroke:var(--green);fill:none;margin:0;"></i> Geverifieerd</div>' : ''}
+      </div>
+      <div class="con-name">${escHtml(a.bedrijfsnaam || (a.voornaam + ' ' + a.achternaam))}</div>
+      <div class="con-loc" style="display:flex;align-items:center;gap:4px;"><i data-lucide="map-pin" style="width:12px;height:12px;stroke:var(--gray-text);fill:none;margin:0;"></i> ${escHtml(a.stad || '—')}</div>
+      <div class="stars-row">
+        ${stars}
+        ${a.avg > 0 ? `<span class="str-sc">${score}</span><span class="str-ct">(${a.review_count} review${a.review_count!==1?'s':''})</span>` : ''}
+      </div>
+      ${trustBadges}
+      <div class="specs"><span class="spec">${escHtml((a.specialisme||'Algemeen').split('&')[0].trim())}</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-border);">
+        <span style="font-size:12px;color:var(--gray-text);">Bekijk profiel & reviews</span>
+        <i data-lucide="chevron-right" style="width:16px;height:16px;stroke:var(--blue-light);fill:none;margin:0;"></i>
+      </div>
     </div>
-    <div class="con-name">${escHtml(a.bedrijfsnaam || (a.voornaam + ' ' + a.achternaam))}</div>
-    <div class="con-loc" style="display:flex;align-items:center;gap:4px;"><i data-lucide="map-pin" style="width:12px;height:12px;stroke:var(--gray-text);fill:none;margin:0;"></i> ${escHtml(a.stad || '—')}</div>
-    <div class="stars-row">
-      ${stars}
-      ${a.avg > 0 ? `<span class="str-sc">${score}</span><span class="str-ct">(${a.review_count} review${a.review_count!==1?'s':''})</span>` : ''}
-    </div>
-    ${trustBadges}
-    <div class="specs"><span class="spec">${escHtml((a.specialisme||'Algemeen').split('&')[0].trim())}</span></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-border);">
-      <span style="font-size:12px;color:var(--gray-text);">Bekijk profiel & reviews</span>
-      <i data-lucide="chevron-right" style="width:16px;height:16px;stroke:var(--blue-light);fill:none;margin:0;"></i>
-    </div>
+    <button class="vgl-btn" onclick="event.stopPropagation();toggleVergelijk('${escAttr(a.id)}')" id="vglbtn-${escAttr(a.id)}">
+      <i data-lucide="git-compare" style="width:13px;height:13px;stroke:currentColor;fill:none;margin:0;"></i>
+      Vergelijk
+    </button>
   </div>`;
 }
 
@@ -3854,7 +3904,168 @@ function updateNavFoto() {
 
 
 // ══════════════════════════════════════════════════
-// 13. PRIJS CALCULATOR
+// 13. AANNEMER VERGELIJKER
+// ══════════════════════════════════════════════════
+var vglShortlist = []; // array van aannemer-id strings (max 3)
+
+function toggleVergelijk(id) {
+  var idx = vglShortlist.indexOf(id);
+  if (idx > -1) {
+    // Verwijder uit shortlist
+    vglShortlist.splice(idx, 1);
+    var btn = document.getElementById('vglbtn-' + id);
+    if (btn) btn.classList.remove('active');
+  } else {
+    // Voeg toe (max 3)
+    if (vglShortlist.length >= 3) {
+      showToast('Maximaal 3 aannemers vergelijken', true);
+      return;
+    }
+    vglShortlist.push(id);
+    var btn = document.getElementById('vglbtn-' + id);
+    if (btn) btn.classList.add('active');
+  }
+  updateVglBar();
+}
+
+function updateVglBar() {
+  var bar = document.getElementById('vgl-bar');
+  var countEl = document.getElementById('vgl-bar-count');
+  var avatarsEl = document.getElementById('vgl-bar-avatars');
+  var nuBtn = document.getElementById('vgl-nu-btn');
+  if (!bar) return;
+
+  if (vglShortlist.length === 0) {
+    bar.classList.remove('open');
+    return;
+  }
+  bar.classList.add('open');
+  if (countEl) countEl.textContent = vglShortlist.length;
+  if (nuBtn) nuBtn.disabled = vglShortlist.length < 2;
+
+  // Render mini-avatars
+  if (avatarsEl) {
+    avatarsEl.innerHTML = '';
+    vglShortlist.forEach(function(id) {
+      var a = allAannemers.find(function(x) { return x.id === id; });
+      if (!a) return;
+      var ini = ((a.voornaam ? a.voornaam[0] : '') + (a.achternaam ? a.achternaam[0] : '')).toUpperCase() || '?';
+      var div = document.createElement('div');
+      div.className = 'vgl-bar-av';
+      div.textContent = ini;
+      avatarsEl.appendChild(div);
+    });
+  }
+}
+
+function clearVergelijker() {
+  vglShortlist.forEach(function(id) {
+    var btn = document.getElementById('vglbtn-' + id);
+    if (btn) btn.classList.remove('active');
+  });
+  vglShortlist = [];
+  updateVglBar();
+}
+
+function openVergelijkModal() {
+  var modal = document.getElementById('vglModal');
+  var grid = document.getElementById('vgl-modal-grid');
+  if (!modal || !grid) return;
+
+  var aannemers = vglShortlist.map(function(id) {
+    return allAannemers.find(function(x) { return x.id === id; });
+  }).filter(Boolean);
+
+  if (aannemers.length < 2) { showToast('Selecteer minstens 2 aannemers', true); return; }
+
+  // Build grid: label kolom + aannemer kolommen
+  var cols = aannemers.length + 1;
+  var gridStyle = 'display:grid;grid-template-columns:160px ' + aannemers.map(function() { return '1fr'; }).join(' ') + ';';
+  grid.setAttribute('style', gridStyle);
+  grid.innerHTML = '';
+
+  // Helper: header rij
+  var headerRow = document.createElement('div');
+  headerRow.className = 'vgl-row';
+  headerRow.style.cssText = 'grid-column:1/-1;display:grid;grid-template-columns:160px ' + aannemers.map(function() { return '1fr'; }).join(' ') + ';background:#f8faff;border-bottom:2px solid #e8edf8;';
+  headerRow.innerHTML = '<div class="vgl-row-label" style="padding:14px 14px;display:flex;align-items:center;">Vergelijking</div>';
+  aannemers.forEach(function(a) {
+    var ini = ((a.voornaam ? a.voornaam[0] : '') + (a.achternaam ? a.achternaam[0] : '')).toUpperCase() || '?';
+    var col = document.createElement('div');
+    col.className = 'vgl-col vgl-col-header';
+    col.style.cssText = 'padding:14px 20px;border-right:1px solid #e8edf8;';
+    col.innerHTML = '<div class="vgl-col-av">' + escHtml(ini) + '</div>'
+      + '<div class="vgl-col-naam">' + escHtml(a.bedrijfsnaam || (a.voornaam + ' ' + a.achternaam)) + '</div>'
+      + '<div class="vgl-col-spec">' + escHtml(a.specialisme || 'Algemeen') + '</div>';
+    headerRow.appendChild(col);
+  });
+  grid.appendChild(headerRow);
+
+  // Data rijen
+  function addRow(label, valueFn) {
+    var row = document.createElement('div');
+    row.className = 'vgl-row';
+    row.style.cssText = 'grid-column:1/-1;display:grid;grid-template-columns:160px ' + aannemers.map(function() { return '1fr'; }).join(' ') + ';';
+    var lbl = document.createElement('div');
+    lbl.className = 'vgl-row-label';
+    lbl.textContent = label;
+    row.appendChild(lbl);
+    var vals = aannemers.map(valueFn);
+    var maxVal = Math.max.apply(null, vals.map(function(v) { return typeof v === 'number' ? v : 0; }));
+    aannemers.forEach(function(a, i) {
+      var cell = document.createElement('div');
+      cell.className = 'vgl-cell';
+      cell.style.cssText = i < aannemers.length - 1 ? 'border-right:1px solid #f0f4ff;' : '';
+      var val = vals[i];
+      if (typeof val === 'number' && val > 0) {
+        var isWinner = val === maxVal && maxVal > 0;
+        cell.innerHTML = '<div class="vgl-score-bar">'
+          + '<div class="vgl-score-bg"><div class="vgl-score-fill" style="width:' + Math.round(val / 5 * 100) + '%;"></div></div>'
+          + '<span' + (isWinner ? ' class="vgl-winner"' : '') + '>' + val.toFixed(1) + (isWinner ? ' \u2714' : '') + '</span>'
+          + '</div>';
+      } else {
+        cell.textContent = val || '—';
+      }
+      row.appendChild(cell);
+    });
+    grid.appendChild(row);
+  }
+
+  addRow('Stad / regio',  function(a) { return a.stad || '—'; });
+  addRow('Gem. score',    function(a) { return a.avg > 0 ? a.avg : 0; });
+  addRow('Kwaliteit',     function(a) { return a.avg_kwaliteit > 0 ? a.avg_kwaliteit : 0; });
+  addRow('Communicatie',  function(a) { return a.avg_communicatie > 0 ? a.avg_communicatie : 0; });
+  addRow('Prijs/kwal.',   function(a) { return a.avg_prijs_kwaliteit > 0 ? a.avg_prijs_kwaliteit : 0; });
+  addRow('Tijdigheid',    function(a) { return a.avg_tijdigheid > 0 ? a.avg_tijdigheid : 0; });
+  addRow('Netheid',       function(a) { return a.avg_netheid > 0 ? a.avg_netheid : 0; });
+  addRow('# Reviews',     function(a) { return a.review_count > 0 ? a.review_count.toString() + ' reviews' : 'Nog geen'; });
+  addRow('Specialisme',   function(a) { return a.specialisme || 'Algemeen'; });
+
+  // CTA rij
+  var ctaRow = document.createElement('div');
+  ctaRow.style.cssText = 'grid-column:1/-1;display:grid;grid-template-columns:160px ' + aannemers.map(function() { return '1fr'; }).join(' ') + ';background:#f8faff;border-top:2px solid #e8edf8;';
+  ctaRow.innerHTML = '<div class="vgl-row-label" style="padding:14px;display:flex;align-items:center;">Actie</div>';
+  aannemers.forEach(function(a, i) {
+    var cell = document.createElement('div');
+    cell.style.cssText = 'padding:12px 20px;' + (i < aannemers.length - 1 ? 'border-right:1px solid #e8edf8;' : '');
+    cell.innerHTML = '<button onclick="closeVergelijkModal();openAannemerProfiel(\'' + escAttr(a.id) + '\')" style="width:100%;padding:9px;background:var(--blue-dark);color:#fff;border:none;border-radius:8px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:14px;cursor:pointer;">Bekijk profiel</button>';
+    ctaRow.appendChild(cell);
+  });
+  grid.appendChild(ctaRow);
+
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeVergelijkModal() {
+  var modal = document.getElementById('vglModal');
+  if (modal) modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ══════════════════════════════════════════════════
+// 14. PRIJS CALCULATOR
 // ══════════════════════════════════════════════════
 const PRIJS_DATA = {
   'Badkamer':      { per_m2: [450, 900],   basis: 800,  mat_pct: 0.45 },
@@ -4463,6 +4674,29 @@ async function waitForLibraries() {
 <!-- Portfolio Lightbox -->
 <div class="portfolio-lightbox" id="portfolioLightbox" onclick="closePortfolioLightbox()">
   <div class="portfolio-lightbox-inner" id="portfolioLightboxInner"></div>
+</div>
+
+<!-- Aannemer Vergelijker — Floating Bar -->
+<div id="vgl-bar">
+  <div class="vgl-bar-info">
+    <div class="vgl-bar-avatars" id="vgl-bar-avatars"></div>
+    <div class="vgl-bar-txt"><span id="vgl-bar-count">0</span> aannemers geselecteerd</div>
+  </div>
+  <div class="vgl-bar-btns">
+    <button class="vgl-clear-btn" onclick="clearVergelijker()">Wis selectie</button>
+    <button id="vgl-nu-btn" onclick="openVergelijkModal()" disabled>Vergelijk nu →</button>
+  </div>
+</div>
+
+<!-- Aannemer Vergelijker — Modal -->
+<div id="vglModal" onclick="if(event.target===this)closeVergelijkModal()">
+  <div class="vgl-modal-inner">
+    <div class="vgl-modal-head">
+      <span class="vgl-modal-title">Aannemers vergelijken</span>
+      <button class="vgl-close" onclick="closeVergelijkModal()">✕</button>
+    </div>
+    <div id="vgl-modal-grid"><!-- JS vult dit --></div>
+  </div>
 </div>
 
 </body>
