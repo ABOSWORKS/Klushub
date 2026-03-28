@@ -1380,9 +1380,10 @@ const KLUS_LOAD_RESCUE_TIMEOUT_MS = 1800;
 const KLUS_PUBLISH_RECOVERY_DELAYS_MS = [350, 900];
 const KLUS_PUBLISH_RECOVERY_TIMEOUT_MS = 1200;
 let klusPublishInFlight = false;
-let klussenLoadSeq = 0;
+const klussenLoadSeq = { foreground: 0, background: 0 };
 let foregroundKlussenLoadPromise = null;
 let backgroundKlussenLoadPromise = null;
+let lastKlussenNavLoadAt = 0;
 let lastGlobalAsyncErrorAt = 0;
 let aanbiedingSubmitInFlight = false;
 let aanbiedingSubmitStartedAt = 0;
@@ -1565,8 +1566,22 @@ function clearKlussenLoadPromise(source, promise) {
   if (foregroundKlussenLoadPromise === promise) foregroundKlussenLoadPromise = null;
 }
 
-function isLatestKlussenLoad(requestSeq) {
-  return requestSeq === klussenLoadSeq;
+function nextKlussenLoadSeq(source) {
+  const key = source === 'background' ? 'background' : 'foreground';
+  klussenLoadSeq[key] = (klussenLoadSeq[key] || 0) + 1;
+  return klussenLoadSeq[key];
+}
+
+function isLatestKlussenLoad(requestSeq, source) {
+  const key = source === 'background' ? 'background' : 'foreground';
+  return requestSeq === klussenLoadSeq[key];
+}
+
+function shouldSkipNavKlussenLoad() {
+  const now = Date.now();
+  if (now - lastKlussenNavLoadAt < 220) return true;
+  lastKlussenNavLoadAt = now;
+  return false;
 }
 
 function registerGlobalAsyncErrorHandlers() {
@@ -1928,19 +1943,23 @@ function renderKlussenLoadErrorState(message) {
   if (window.lucide) lucide.createIcons();
 }
 
+function isKlussenViewActive() {
+  return document.getElementById('page-klussen')?.classList.contains('active') === true;
+}
+
 async function loadKlussen(reset = true, options = {}) {
   const source = getKlussenLoadSource(options);
   const existingPromise = getKlussenLoadPromise(source);
   if (existingPromise) return existingPromise;
 
-  const requestSeq = ++klussenLoadSeq;
+  const requestSeq = nextKlussenLoadSeq(source);
   const loadStartedAt = Date.now();
   const loadDeadlineAt = loadStartedAt + getKlusLoadTimeoutMs();
   const isForeground = source === 'foreground';
   const previousKlussen = reset ? [...allKlussen] : null;
   const previousOffset = klussensOffset;
   const queryOffset = reset ? 0 : klussensOffset;
-  const isCurrentRequest = () => isLatestKlussenLoad(requestSeq);
+  const isCurrentRequest = () => isLatestKlussenLoad(requestSeq, source);
 
   trackEvent('klussen_load_started', { reset, source, offset: klussensOffset });
   if (!sb) {
@@ -2032,6 +2051,18 @@ async function loadKlussen(reset = true, options = {}) {
       const khOpen = document.getElementById('kh-open');
       if (khOpen) khOpen.textContent = allKlussen.length;
 
+      if (!isForeground) {
+        trackEvent('klussen_load_succeeded', {
+          reset,
+          source,
+          loaded_count: loadedKlussen.length,
+          total_count: allKlussen.length,
+          duration_ms: Date.now() - loadStartedAt,
+          ui_render_skipped: true,
+        });
+        return true;
+      }
+
       try {
         applyFilters();
       } catch (renderErr) {
@@ -2054,6 +2085,19 @@ async function loadKlussen(reset = true, options = {}) {
       if (!isCurrentRequest()) return false;
       const errMsg = String(err?.message || err || 'unknown');
       const isTimeout = errMsg.toLowerCase().includes('timeout');
+      if (!isForeground) {
+        trackEvent('klussen_load_failed', {
+          reset,
+          source,
+          reason: errMsg,
+          timeout: isTimeout,
+          rescue_ok: false,
+          duration_ms: Date.now() - loadStartedAt,
+          background_only: true,
+        });
+        console.warn('Background klussen-load mislukt:', err);
+        return false;
+      }
       trackEvent('klussen_load_failed', {
         reset,
         source,
@@ -2644,15 +2688,22 @@ async function loadStats() {
     document.getElementById('kh-new').textContent = '—';
     return;
   }
-  const today = new Date().toISOString().split('T')[0];
-  const [{ count: totaal }, { count: aannemers }, { count: vandaag }] = await Promise.all([
-    sb.from('klussen').select('*',{count:'exact',head:true}),
-    sb.from('aannemers').select('*',{count:'exact',head:true}),
-    sb.from('klussen').select('*',{count:'exact',head:true}).gte('aangemaakt',today),
-  ]);
-  document.getElementById('stat-aannemers').textContent = aannemers ? aannemers.toLocaleString('nl-NL') : '4.800+';
-  document.getElementById('stat-klussen').textContent = totaal ? totaal.toLocaleString('nl-NL') : '23K';
-  document.getElementById('kh-new').textContent = vandaag || '0';
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const [{ count: totaal }, { count: aannemers }, { count: vandaag }] = await Promise.all([
+      sb.from('klussen').select('*',{count:'exact',head:true}),
+      sb.from('aannemers').select('*',{count:'exact',head:true}),
+      sb.from('klussen').select('*',{count:'exact',head:true}).gte('aangemaakt',today),
+    ]);
+    document.getElementById('stat-aannemers').textContent = aannemers ? aannemers.toLocaleString('nl-NL') : '4.800+';
+    document.getElementById('stat-klussen').textContent = totaal ? totaal.toLocaleString('nl-NL') : '23K';
+    document.getElementById('kh-new').textContent = vandaag || '0';
+  } catch (err) {
+    console.warn('Stats laden mislukt, fallback actief:', err);
+    document.getElementById('stat-aannemers').textContent = '4.800+';
+    document.getElementById('stat-klussen').textContent = '23K';
+    document.getElementById('kh-new').textContent = '0';
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -3388,6 +3439,87 @@ async function openSavedKlusFromList(id, token) {
   }
 }
 
+function parseDoorlooptijdToDays(value) {
+  if (!value) return null;
+  const input = String(value).toLowerCase().trim();
+  const match = input.match(/(\d+[.,]?\d*)/);
+  if (!match) return null;
+  const raw = Number(String(match[1]).replace(',', '.'));
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  if (input.includes('week')) return Math.round(raw * 5);
+  if (input.includes('maand')) return Math.round(raw * 22);
+  return Math.round(raw);
+}
+
+function getAanbiedingVergelijking(aanbiedingen) {
+  const candidates = (aanbiedingen || []).filter(a => a && Number(a.prijs || 0) > 0);
+  if (!candidates.length) return null;
+
+  const prices = candidates.map(a => Number(a.prijs || 0)).filter(v => v > 0).sort((a, b) => a - b);
+  const minPrijs = prices[0];
+  const maxPrijs = prices[prices.length - 1];
+  const medianPrijs = prices[Math.floor(prices.length / 2)];
+  const prijsRange = Math.max(1, maxPrijs - minPrijs);
+
+  const daysById = {};
+  const knownDays = [];
+  candidates.forEach(a => {
+    const d = parseDoorlooptijdToDays(a.doorlooptijd);
+    daysById[a.id] = d;
+    if (Number.isFinite(d)) knownDays.push(d);
+  });
+  const minDays = knownDays.length ? Math.min(...knownDays) : null;
+  const maxDays = knownDays.length ? Math.max(...knownDays) : null;
+  const dayRange = (minDays !== null && maxDays !== null) ? Math.max(1, maxDays - minDays) : null;
+
+  const ranked = candidates.map(a => {
+    const prijs = Number(a.prijs || 0);
+    const days = daysById[a.id];
+    const priceScore = 1 - ((prijs - minPrijs) / prijsRange);
+    const speedScore = (days === null || dayRange === null || minDays === null) ? 0.5 : 1 - ((days - minDays) / dayRange);
+    const messageScore = Math.min(1, String(a.bericht || '').trim().length / 140);
+    const score = (priceScore * 0.5) + (speedScore * 0.35) + (messageScore * 0.15);
+    return { id: a.id, score };
+  }).sort((a, b) => b.score - a.score);
+
+  const best = ranked[0];
+  const cheapest = candidates.find(a => Number(a.prijs || 0) === minPrijs) || null;
+  const fastest = (minDays !== null) ? candidates.find(a => daysById[a.id] === minDays) || null : null;
+  const bestCandidate = candidates.find(a => a.id === best.id) || null;
+  const asName = (a) => escHtml(a?.bedrijfsnaam || `${a?.voornaam || ''} ${a?.achternaam || ''}`.trim() || 'Onbekend');
+  const asEuro = (v) => `€ ${Number(v || 0).toLocaleString('nl-NL')}`;
+
+  return {
+    bestId: best.id,
+    html: `
+      <section style="background:linear-gradient(135deg,#F7FAFF,#EDF4FF);border:1px solid #D8E6FF;border-radius:14px;padding:14px 14px 12px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <h4 style="font-size:14px;font-weight:800;color:var(--blue-dark);margin:0"><i data-lucide="sparkles" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"></i>Aanbieding Vergelijker</h4>
+          <span style="font-size:11px;font-weight:700;color:#31589E;background:#DCE9FF;border:1px solid #C7DBFF;padding:3px 8px;border-radius:999px">Beslis-assistent</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px">
+          <article style="background:#fff;border:1px solid #E4EAF6;border-radius:10px;padding:9px">
+            <div style="font-size:11px;color:var(--gray-text);margin-bottom:2px">Prijsrange</div>
+            <div style="font-size:13px;font-weight:800;color:var(--text-dark)">${asEuro(minPrijs)} - ${asEuro(maxPrijs)}</div>
+          </article>
+          <article style="background:#fff;border:1px solid #E4EAF6;border-radius:10px;padding:9px">
+            <div style="font-size:11px;color:var(--gray-text);margin-bottom:2px">Mediaan prijs</div>
+            <div style="font-size:13px;font-weight:800;color:var(--text-dark)">${asEuro(medianPrijs)}</div>
+          </article>
+          <article style="background:#fff;border:1px solid #E4EAF6;border-radius:10px;padding:9px">
+            <div style="font-size:11px;color:var(--gray-text);margin-bottom:2px">Snelste planning</div>
+            <div style="font-size:13px;font-weight:800;color:var(--text-dark)">${fastest ? escHtml(fastest.doorlooptijd || 'Onbekend') : 'Onbekend'}</div>
+          </article>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#31589E">
+          Beste balans: <strong>${asName(bestCandidate)}</strong>
+          ${cheapest ? ` · Laagste prijs: ${asName(cheapest)}` : ''}
+        </div>
+      </section>
+    `,
+  };
+}
+
 async function openKlantBeheer(klusId, token) {
   const overlay = document.getElementById('klantBeheerOverlay');
   const body = document.getElementById('kb-body');
@@ -3467,11 +3599,14 @@ async function openKlantBeheer(klusId, token) {
         <p style="font-size:13px;">Zodra aannemers reageren, verschijnen ze direct hier in het dashboard.</p>
       </div>`;
   } else {
+    const vergelijking = getAanbiedingVergelijking(aanbiedingen);
     html += `<h4 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text-dark)">Ontvangen aanbiedingen (${aanbiedingen.length})</h4>`;
+    if (vergelijking?.html) html += vergelijking.html;
     
     html += aanbiedingen.map(a => {
       const isGeaccepteerd = a.status === 'geaccepteerd';
       const isAfgewezen = a.status === 'afgewezen';
+      const isBestBalance = vergelijking?.bestId && a.id === vergelijking.bestId;
       const prijs = a.prijs ? `€ ${a.prijs.toLocaleString('nl-NL')}` : '—';
       
       let callToAction = '';
@@ -3491,6 +3626,7 @@ async function openKlantBeheer(klusId, token) {
         <div class="mkp-klus-top" style="align-items:flex-start">
           <div style="flex:1">
             <div style="font-size:16px;font-weight:800;color:var(--text-dark);margin-bottom:2px">${escHtml(a.bedrijfsnaam || a.voornaam + ' ' + a.achternaam)}</div>
+            ${isBestBalance ? `<div data-best-balance="true" style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;color:#1E4FAF;background:#E4EEFF;border:1px solid #C9DBFF;border-radius:999px;padding:3px 8px;margin-bottom:4px"><i data-lucide="award" style="width:10px;height:10px"></i>Beste balans</div>` : ''}
             <div style="font-size:12px;color:var(--gray-text)"><i data-lucide="map-pin" style="width:10px;height:10px;display:inline-block"></i> ${escHtml(a.aannemer_stad || '—')} · ${escHtml(a.specialisme || 'Specialist')}</div>
           </div>
           <div style="text-align:right">
@@ -3878,7 +4014,7 @@ function showPage(id) {
   trackEvent('page_view', { page_id: id });
   window.scrollTo(0,0);
   if (id==='landing') initReveal();
-  if (id==='klussen') void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
+  if (id==='klussen' && !shouldSkipNavKlussenLoad()) void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
   if (id==='aannemers') { if (typeof renderDemoAannemers === 'function') renderDemoAannemers(); if (typeof loadAannemers === 'function') loadAannemers(); }
   if (id==='reviews') renderReviewsPage();
   if (id==='faq') openFaqSection('stappenplan', document.querySelector('#page-faq .faq-tab'));
@@ -3892,7 +4028,7 @@ function switchP(view) {
   const t = { plaatsen:['Plaats jouw <em>klus</em>','Gratis en vrijblijvend. Ontvang aanbiedingen.','Klus plaatsen'], klussen:['Openstaande <em>klussen</em>','Bekijk alle projecten en bied jezelf aan.','Openstaande klussen'] }[view];
   document.getElementById('kh-title').innerHTML=t[0]; document.getElementById('kh-sub').textContent=t[1]; document.getElementById('kh-bc').textContent=t[2];
   window.scrollTo({top:0,behavior:'smooth'});
-  if (view==='klussen') void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
+  if (view==='klussen' && !shouldSkipNavKlussenLoad()) void loadKlussen().catch(err => console.warn('Klussen tonen mislukt:', err));
 }
 function switchHowTab(tab,btn) {
   document.querySelectorAll('.how-tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active');

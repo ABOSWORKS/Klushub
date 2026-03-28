@@ -22,3 +22,18 @@
 - Probleem opgelost: protocol-werkwijze was mondeling afgesproken maar niet als herbruikbare skill vastgelegd.
 - Keuze: een lokale custom skill `autonomy-protocol-ops` gemaakt en gevalideerd, zodat elke sprint consistent dezelfde TDD/journaling/semantic/error-handling regels volgt.
 - Volgende logische AI-actie: skill meenemen in volgende implementatie-rondes en periodiek bijwerken bij nieuwe werkafspraken.
+
+## 2026-03-28 (autonomous pipeline batch)
+- Probleem opgelost: open-klussen timeout/stuck risico's na publish/tabwissel en gebrek aan keuze-ondersteuning in klantbeheer.
+- Keuze:
+  - Open-klussen flow verder geïsoleerd met source-specifieke load-sequences, nav-dedupe en background-no-render policy.
+  - `loadStats` hardening toegevoegd zodat stats-fouten geen globale UI-regressie veroorzaken.
+  - Nieuwe feature gebouwd: **Aanbieding Vergelijker** in klantbeheer met prijsrange/mediaan/snelste planning + `Beste balans` label per aanbod.
+  - Strategiedocument vastgelegd in `ARCHITECTURE.md` met 2 killer-features en gekozen implementatie.
+- Testevidence:
+  - `npm run test:smoke` => `SMOKE_OK`
+  - `node tests/smoke/open-klussen-isolation.smoke.js` => `OPEN_KLUSSEN_ISOLATION_OK`
+  - `node tests/smoke/beheer-vergelijker.smoke.js` => `BEHEER_VERGELIJKER_OK`
+- Volgende logische AI-actie:
+  1. Live verificatie in productie: request-id correlatie voor resend 401/502 in Supabase Invocations.
+  2. Trust Snapshot Graph (feature 2) op aannemer-profiel en/of reviews-tab implementeren.
