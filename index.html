@@ -1371,10 +1371,19 @@ const EMAIL_CHAIN_FUNCTION = 'resend-email';
 const AANBIEDING_TIMEOUT_MS = 12000;
 const MIJN_AANBIEDINGEN_TIMEOUT_MS = 12000;
 const EMAIL_CHAIN_TIMEOUT_MS = 8000;
+const AANBIEDING_RECOVERY_TIMEOUT_MS = 1600;
+const AANBIEDING_RECOVERY_DELAYS_MS = [350, 900];
+const MIJN_AANBIEDINGEN_MAX_INFLIGHT_MS = 7000;
 const AANBIEDING_BUTTON_HTML = 'Aanbieding versturen ✓';
+const KLUS_LOAD_VARIANT_TIMEOUT_MS = 5500;
+const KLUS_LOAD_RESCUE_TIMEOUT_MS = 1800;
+const KLUS_PUBLISH_RECOVERY_DELAYS_MS = [350, 900];
+const KLUS_PUBLISH_RECOVERY_TIMEOUT_MS = 1200;
 let klusPublishInFlight = false;
-let klussenLoadPromise = null;
-let klussenLoadStartedAt = 0;
+let klussenLoadSeq = 0;
+let foregroundKlussenLoadPromise = null;
+let backgroundKlussenLoadPromise = null;
+let lastGlobalAsyncErrorAt = 0;
 let aanbiedingSubmitInFlight = false;
 let aanbiedingSubmitStartedAt = 0;
 let mijnAanbiedingenLoadPromise = null;
@@ -1535,6 +1544,48 @@ function withTimeout(promise, timeoutMs, label='Request') {
   });
 }
 
+function getKlussenLoadSource(options = {}) {
+  return options && options.source === 'background' ? 'background' : 'foreground';
+}
+
+function getKlussenLoadPromise(source) {
+  return source === 'background' ? backgroundKlussenLoadPromise : foregroundKlussenLoadPromise;
+}
+
+function setKlussenLoadPromise(source, promise) {
+  if (source === 'background') backgroundKlussenLoadPromise = promise;
+  else foregroundKlussenLoadPromise = promise;
+}
+
+function clearKlussenLoadPromise(source, promise) {
+  if (source === 'background') {
+    if (backgroundKlussenLoadPromise === promise) backgroundKlussenLoadPromise = null;
+    return;
+  }
+  if (foregroundKlussenLoadPromise === promise) foregroundKlussenLoadPromise = null;
+}
+
+function isLatestKlussenLoad(requestSeq) {
+  return requestSeq === klussenLoadSeq;
+}
+
+function registerGlobalAsyncErrorHandlers() {
+  const report = (type, err) => {
+    const message = String(err?.message || err || 'Onbekende async fout');
+    console.error(`Globale ${type} fout:`, err);
+    const now = Date.now();
+    if (now - lastGlobalAsyncErrorAt < 5000) return;
+    lastGlobalAsyncErrorAt = now;
+    if (document.getElementById('page-klussen')?.classList.contains('active')) {
+      showToast(`<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>${escHtml(message.slice(0, 140))}`, true);
+    }
+  };
+  window.addEventListener('unhandledrejection', event => report('unhandledrejection', event.reason));
+  window.addEventListener('error', event => report('error', event.error || event.message));
+}
+
+registerGlobalAsyncErrorHandlers();
+
 function getKlusPublishTimeoutMs() {
   const override = Number(window.__KLUSHUB_PUBLISH_TIMEOUT_MS || 0);
   if (Number.isFinite(override) && override > 0) return override;
@@ -1584,6 +1635,34 @@ async function findKlusByBeheerToken(beheerToken) {
   }
 }
 
+async function findRecentAanbieding({ klusId, aannemerId, prijs, doorlooptijd, bericht }) {
+  if (!sb || !klusId || !aannemerId || !prijs) return null;
+  try {
+    const result = await withTimeout(
+      sb
+        .from('aanbiedingen')
+        .select('id,klus_id,aannemer_id,prijs,doorlooptijd,bericht,aangemaakt')
+        .eq('klus_id', klusId)
+        .eq('aannemer_id', aannemerId)
+        .eq('prijs', prijs)
+        .order('aangemaakt', { ascending: false })
+        .limit(3),
+      AANBIEDING_RECOVERY_TIMEOUT_MS,
+      'Aanbieding herstelcheck'
+    );
+    if (result?.error) return null;
+    const candidates = Array.isArray(result?.data) ? result.data : [];
+    const match = candidates.find((row) => {
+      const doorlooptijdMatch = !doorlooptijd || String(row?.doorlooptijd || '') === String(doorlooptijd || '');
+      const berichtMatch = !bericht || String(row?.bericht || '') === String(bericht || '');
+      return doorlooptijdMatch && berichtMatch;
+    });
+    return match || candidates[0] || null;
+  } catch (err) {
+    return null;
+  }
+}
+
 async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving }) {
   if (!sb || !klusId || !beheerToken || !email) {
     trackEvent('email_chain_skipped', {
@@ -1597,22 +1676,26 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
   trackEvent('email_chain_started', { klus_id: klusId });
   const fnName = String(window.__KLUSHUB_EMAIL_FUNCTION || EMAIL_CHAIN_FUNCTION).trim();
   if (!fnName) return;
+  const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const functionUrl = `${String(SUPABASE_URL || '').replace(/\/$/, '')}/functions/v1/${encodeURIComponent(fnName)}`;
   const sessionToken = sb?.auth?.getSession ? (await sb.auth.getSession())?.data?.session?.access_token : null;
   const useSessionToken = String(window.__KLUSHUB_EMAIL_USE_SESSION_TOKEN || '0') === '1';
   const authToken = (useSessionToken && sessionToken) ? sessionToken : SUPABASE_ANON;
   const hasJwtLikeToken = typeof authToken === 'string' && authToken.split('.').length === 3;
+  const allowNoAuthFallback = String(window.__KLUSHUB_EMAIL_ALLOW_NOAUTH_FALLBACK || '1') === '1';
   trackEvent('email_chain_auth_context', {
     klus_id: klusId,
     auth_mode: (useSessionToken && sessionToken) ? 'session_token_opt_in' : 'legacy_anon_token',
     jwt_like: hasJwtLikeToken,
     function_url: functionUrl,
+    request_id: requestId,
   });
-  if (!hasJwtLikeToken) {
+  if (!hasJwtLikeToken && !allowNoAuthFallback) {
     trackEvent('email_chain_failed', {
       klus_id: klusId,
       function_name: fnName,
       reason: 'invalid_auth_token_format',
+      request_id: requestId,
     });
     showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus geplaatst, maar e-mailauth-token is ongeldig geconfigureerd.', true);
     return;
@@ -1624,24 +1707,37 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
     showToast(`<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>${message}`, true);
   };
   try {
-    const response = await withTimeout(
+    const buildHeaders = (mode = 'jwt') => {
+      const headers = {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON,
+        'x-kh-request-id': requestId,
+      };
+      if (mode === 'jwt' && hasJwtLikeToken) headers.Authorization = `Bearer ${authToken}`;
+      return headers;
+    };
+    const invokeEmailFunction = async (mode = 'jwt') => withTimeout(
       fetch(functionUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: SUPABASE_ANON,
-          Authorization: `Bearer ${authToken}`,
-        },
+        headers: buildHeaders(mode),
         body: JSON.stringify({
           klus_id: klusId,
           beheer_token: beheerToken,
           email_klant: email,
           omschrijving: omschrijving || '',
+          request_id: requestId,
         }),
       }),
       EMAIL_CHAIN_TIMEOUT_MS,
       'E-mailketen'
     );
+    let requestMode = hasJwtLikeToken ? 'jwt' : 'noauth';
+    let response = await invokeEmailFunction(requestMode);
+    if ((response.status === 401 || response.status === 403) && requestMode === 'jwt' && allowNoAuthFallback) {
+      console.warn('E-mailketen JWT auth gaf 401/403, probeer no-auth fallback', { requestId });
+      requestMode = 'noauth';
+      response = await invokeEmailFunction(requestMode);
+    }
     let detailBody = null;
     try {
       const text = await response.text();
@@ -1661,14 +1757,24 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       const detailText = typeof detailBody === 'string'
         ? detailBody
         : (detailBody?.error || detailBody?.message || detailBody?.details || detailBody?.likelyCause || detailBody?.raw || '');
+      window.__KH_LAST_EMAIL_CHAIN = {
+        ok: false,
+        requestId,
+        status: response.status,
+        detail: detailText || null,
+        mode: requestMode,
+        at: Date.now(),
+      };
       trackEvent('email_chain_failed', {
         klus_id: klusId,
         function_name: fnName,
         reason: `HTTP ${response.status}`,
         status_code: response.status,
         detail: detailText ? String(detailText).slice(0, 220) : null,
+        request_id: requestId,
+        request_mode: requestMode,
       });
-      console.warn('E-mailketen versturen mislukt:', { status: response.status, detailBody });
+      console.warn('E-mailketen versturen mislukt:', { status: response.status, detailBody, requestId, requestMode });
       const errMsg = `${String(response.status)} ${String(detailText || '')}`.toLowerCase();
       if (response.status === 401 || response.status === 403) {
         warnEmailFailure('Klus geplaatst, maar e-mailendpoint autorisatie faalde (401/403). Controleer verify-jwt instelling en legacy anon-key.');
@@ -1683,10 +1789,20 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       return;
     }
     const data = detailBody || {};
+    window.__KH_LAST_EMAIL_CHAIN = {
+      ok: data?.ok !== false,
+      requestId,
+      status: response.status,
+      detail: data,
+      mode: requestMode,
+      at: Date.now(),
+    };
     trackEvent('email_chain_succeeded', {
       klus_id: klusId,
       function_name: fnName,
       response_ok: data?.ok !== false,
+      request_id: requestId,
+      request_mode: requestMode,
     });
     if (data && data.ok === false) {
       console.warn('E-mailketen response niet OK:', data);
@@ -1697,7 +1813,16 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       klus_id: klusId,
       function_name: fnName,
       reason: String(err?.message || err || 'unknown'),
+      request_id: requestId,
     });
+    window.__KH_LAST_EMAIL_CHAIN = {
+      ok: false,
+      requestId,
+      status: null,
+      detail: String(err?.message || err || 'unknown'),
+      mode: hasJwtLikeToken ? 'jwt' : 'noauth',
+      at: Date.now(),
+    };
     console.warn('E-mailketen timeout/mislukt:', err);
     warnEmailFailure('Klus geplaatst, maar e-mail duurt te lang. Gebruik de beheerknop om verder te gaan.');
   }
@@ -1803,33 +1928,36 @@ function renderKlussenLoadErrorState(message) {
   if (window.lucide) lucide.createIcons();
 }
 
-async function loadKlussen(reset = true) {
+async function loadKlussen(reset = true, options = {}) {
+  const source = getKlussenLoadSource(options);
+  const existingPromise = getKlussenLoadPromise(source);
+  if (existingPromise) return existingPromise;
+
+  const requestSeq = ++klussenLoadSeq;
   const loadStartedAt = Date.now();
-  trackEvent('klussen_load_started', { reset, offset: klussensOffset });
+  const loadDeadlineAt = loadStartedAt + getKlusLoadTimeoutMs();
+  const isForeground = source === 'foreground';
+  const previousKlussen = reset ? [...allKlussen] : null;
+  const previousOffset = klussensOffset;
+  const queryOffset = reset ? 0 : klussensOffset;
+  const isCurrentRequest = () => isLatestKlussenLoad(requestSeq);
+
+  trackEvent('klussen_load_started', { reset, source, offset: klussensOffset });
   if (!sb) {
     if (isDemoFallbackEnabled()) {
       renderDemoKlussen();
       setLoadMoreVisibility(false);
-      trackEvent('klussen_load_demo_fallback', { reset });
+      trackEvent('klussen_load_demo_fallback', { reset, source });
     } else {
       renderKlussenLoadErrorState('Dataverbinding is nog niet actief. Controleer Supabase-instellingen en probeer opnieuw.');
       setLoadMoreVisibility(false);
-      trackEvent('klussen_load_failed', { reset, reason: 'supabase_not_initialized' });
+      trackEvent('klussen_load_failed', { reset, source, reason: 'supabase_not_initialized' });
     }
     return false;
   }
-  if (klussenLoadPromise) {
-    const maxWait = Math.max(getKlusLoadTimeoutMs(), 5000) + 2500;
-    if (Date.now() - klussenLoadStartedAt < maxWait) return klussenLoadPromise;
-    console.warn('Vastgelopen klussen-load gedetecteerd. Nieuwe laadpoging gestart.');
-    klussenLoadPromise = null;
-    klussenLoadStartedAt = 0;
-  }
-  klussenLoadStartedAt = Date.now();
-  klussenLoadPromise = (async () => {
-    if (reset) {
-      klussensOffset = 0;
-      allKlussen = [];
+
+  const loadPromise = (async () => {
+    if (isForeground && reset) {
       const cardsList = document.getElementById('cardsList');
       if (cardsList) {
         cardsList.innerHTML = `
@@ -1840,7 +1968,7 @@ async function loadKlussen(reset = true) {
         if (window.lucide) lucide.createIcons();
       }
     }
-    setLoadMoreVisibility(false);
+    if (isForeground) setLoadMoreVisibility(false);
 
     try {
       void archiveerVerlopenKlussen().catch(err => console.warn('Archiveren op achtergrond mislukt:', err));
@@ -1850,23 +1978,44 @@ async function loadKlussen(reset = true) {
           .select(columns)
           .eq('status', 'open');
         if (orderColumn) q = q.order(orderColumn, { ascending: false });
-        return q.range(klussensOffset, klussensOffset + PAGE_SIZE - 1);
+        return q.range(queryOffset, queryOffset + PAGE_SIZE - 1);
       };
 
       const attempts = [
         { columns: KLUS_LIST_COLUMNS, orderColumn: 'aangemaakt', label: 'fast+aangemaakt' },
         { columns: KLUS_LIST_COLUMNS, orderColumn: 'created_at', label: 'fast+created_at' },
-        { columns: '*', orderColumn: 'aangemaakt', label: 'all+aangemaakt' },
-        { columns: '*', orderColumn: 'created_at', label: 'all+created_at' },
-        { columns: '*', orderColumn: null, label: 'all+no-order' },
       ];
 
       let data = null;
       let error = null;
       for (const attempt of attempts) {
-        ({ data, error } = await withTimeout(buildKlusQuery(attempt), getKlusLoadTimeoutMs(), `Klussen laden (${attempt.label})`));
+        if (!isCurrentRequest()) return false;
+        const remainingMs = loadDeadlineAt - Date.now();
+        if (remainingMs <= 0) throw new Error('Klussen laaddeadline overschreden');
+        ({ data, error } = await withTimeout(
+          buildKlusQuery(attempt),
+          Math.min(KLUS_LOAD_VARIANT_TIMEOUT_MS, remainingMs),
+          `Klussen laden (${attempt.label})`
+        ));
         if (!error) break;
         console.warn(`Klussen query poging mislukt (${attempt.label})`, error);
+      }
+      if (error) {
+        const remainingMs = loadDeadlineAt - Date.now();
+        if (remainingMs > 0 && isCurrentRequest()) {
+          const rescueQuery = sb
+            .from('klussen')
+            .select('id,type,omschrijving,stad,postcode,budget,deadline,status,aangemaakt,created_at')
+            .eq('status', 'open')
+            .range(queryOffset, queryOffset + PAGE_SIZE - 1);
+          const rescueResult = await withTimeout(
+            rescueQuery,
+            Math.min(KLUS_LOAD_RESCUE_TIMEOUT_MS, remainingMs),
+            'Klussen rescue query'
+          );
+          data = rescueResult?.data || null;
+          error = rescueResult?.error || null;
+        }
       }
       if (error) throw error;
 
@@ -1874,8 +2023,11 @@ async function loadKlussen(reset = true) {
         ...k,
         aangemaakt: k?.aangemaakt || k?.created_at || null,
       }));
-      allKlussen = reset ? loadedKlussen : [...allKlussen, ...loadedKlussen];
-      klussensOffset += loadedKlussen.length;
+      if (!isCurrentRequest()) return false;
+
+      const nextKlussen = reset ? loadedKlussen : [...allKlussen, ...loadedKlussen];
+      allKlussen = nextKlussen;
+      klussensOffset = nextKlussen.length;
 
       const khOpen = document.getElementById('kh-open');
       if (khOpen) khOpen.textContent = allKlussen.length;
@@ -1887,55 +2039,42 @@ async function loadKlussen(reset = true) {
         filteredKlussen = [...loadedKlussen];
         renderKlussen(loadedKlussen);
       }
-      if (reset) setTimeout(() => { void updateOpenKlussenCount(); }, 1200);
+      if (reset) setTimeout(() => { if (isCurrentRequest()) void updateOpenKlussenCount(); }, 1200);
       const hasMore = loadedKlussen.length === PAGE_SIZE;
       setLoadMoreVisibility(hasMore);
       trackEvent('klussen_load_succeeded', {
         reset,
+        source,
         loaded_count: loadedKlussen.length,
         total_count: allKlussen.length,
         duration_ms: Date.now() - loadStartedAt,
       });
       return true;
     } catch (err) {
+      if (!isCurrentRequest()) return false;
       const errMsg = String(err?.message || err || 'unknown');
       const isTimeout = errMsg.toLowerCase().includes('timeout');
-      let rescueData = null;
-      let rescueError = null;
-      try {
-        const rescueQuery = sb
-          .from('klussen')
-          .select('id,type,omschrijving,stad,postcode,budget,deadline,status,aangemaakt,created_at')
-          .eq('status', 'open')
-          .limit(24);
-        const rescueResult = await withTimeout(rescueQuery, 3500, 'Klussen rescue query');
-        rescueData = (rescueResult?.data || []).map(k => ({
-          ...k,
-          aangemaakt: k?.aangemaakt || k?.created_at || null,
-        }));
-        rescueError = rescueResult?.error || null;
-      } catch (rescueErr) {
-        rescueError = rescueErr;
-      }
       trackEvent('klussen_load_failed', {
         reset,
+        source,
         reason: errMsg,
         timeout: isTimeout,
-        rescue_ok: Array.isArray(rescueData) && rescueData.length > 0 && !rescueError,
+        rescue_ok: false,
         duration_ms: Date.now() - loadStartedAt,
       });
       console.warn('Klussen laden mislukt, fallback volgt:', err);
-      if (Array.isArray(rescueData) && rescueData.length > 0 && !rescueError) {
-        allKlussen = reset ? rescueData : [...allKlussen, ...rescueData];
-        klussensOffset = allKlussen.length;
+      if (previousKlussen && previousKlussen.length > 0) {
+        allKlussen = previousKlussen;
+        klussensOffset = previousOffset;
         try {
           applyFilters();
         } catch (renderErr) {
-          filteredKlussen = [...allKlussen];
-          renderKlussen(allKlussen);
+          filteredKlussen = [...previousKlussen];
+          renderKlussen(previousKlussen);
         }
-        showToast('Live klussen geladen via herstelpad.', true);
-        return true;
+        setLoadMoreVisibility(false);
+        if (isForeground) showToast('Live klussen laden mislukt. Vorige resultaten blijven zichtbaar.', true);
+        return false;
       }
       if (isTimeout) {
         showToast('Klussen laden duurt te lang. Probeer opnieuw.', true);
@@ -1947,11 +2086,12 @@ async function loadKlussen(reset = true) {
       setLoadMoreVisibility(false);
       return false;
     } finally {
-      klussenLoadPromise = null;
-      klussenLoadStartedAt = 0;
+      clearKlussenLoadPromise(source, loadPromise);
     }
   })();
-  return klussenLoadPromise;
+
+  setKlussenLoadPromise(source, loadPromise);
+  return loadPromise;
 }
 
 async function loadMore() {
@@ -2650,9 +2790,13 @@ async function insertKlus(payload, btnId) {
       if (!firstMsg.includes('timeout')) throw firstErr;
       // Geen tweede blind insert: eerst read-back op beheer_token.
       let recovered = null;
-      for (let i = 0; i < 3; i++) {
-        await new Promise(resolve => setTimeout(resolve, 900));
-        recovered = await findKlusByBeheerToken(beheerToken);
+      for (const delayMs of KLUS_PUBLISH_RECOVERY_DELAYS_MS) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        recovered = await withTimeout(
+          findKlusByBeheerToken(beheerToken),
+          KLUS_PUBLISH_RECOVERY_TIMEOUT_MS,
+          'Klus publiceren herstel'
+        );
         if (recovered?.id) break;
       }
       if (recovered?.id) {
@@ -2735,7 +2879,7 @@ function closeMijnKlussen() {
 
 async function loadMijnKlussen() {
   if (mijnAanbiedingenLoadPromise) {
-    const maxWait = Math.max(MIJN_AANBIEDINGEN_TIMEOUT_MS, 5000) + 2500;
+    const maxWait = MIJN_AANBIEDINGEN_MAX_INFLIGHT_MS;
     if (Date.now() - mijnAanbiedingenLoadStartedAt < maxWait) return mijnAanbiedingenLoadPromise;
     console.warn('Vastgelopen "mijn aanbiedingen"-load gedetecteerd. Nieuwe laadpoging gestart.');
     mijnAanbiedingenLoadPromise = null;
@@ -2775,12 +2919,16 @@ async function loadMijnKlussen() {
             .from('klussen')
             .select('id, status, deadline, budget, omschrijving, stad, postcode')
             .in('id', klusIds),
-          8000,
+          4000,
           'Klusdetails laden'
         );
-        if (klussenResult?.error) throw klussenResult.error;
-        const klusMap = new Map((klussenResult?.data || []).map(k => [k.id, k]));
-        data = data.map(aanb => ({ ...aanb, klussen: klusMap.get(aanb.klus_id) || null }));
+        if (klussenResult?.error) {
+          console.warn('Klusdetails bij aanbiedingen laden mislukt, aanbodlijst zonder details wordt getoond:', klussenResult.error);
+          data = data.map(aanb => ({ ...aanb, klussen: null }));
+        } else {
+          const klusMap = new Map((klussenResult?.data || []).map(k => [k.id, k]));
+          data = data.map(aanb => ({ ...aanb, klussen: klusMap.get(aanb.klus_id) || null }));
+        }
       }
     }
   } catch (err) {
@@ -2875,7 +3023,7 @@ function showKlusBevestiging(klusId, token, omschrijving) {
   _bevToken  = token;
   resetPublishButtons();
   setTimeout(() => {
-    void loadKlussen().catch(err => console.warn('Klussen verversen na publicatie mislukt:', err));
+    void loadKlussen(true, { source: 'background' }).catch(err => console.warn('Klussen verversen na publicatie mislukt:', err));
   }, 500);
 
   const overlay = document.getElementById('bevestigingOverlay');
@@ -3611,6 +3759,30 @@ async function submitAanbieding() {
     showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!');
   } catch (err) {
     const msg = String(err?.message || err || 'Onbekende fout');
+    if (msg.toLowerCase().includes('timeout')) {
+      let recoveredAanbieding = null;
+      for (const delayMs of AANBIEDING_RECOVERY_DELAYS_MS) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        recoveredAanbieding = await findRecentAanbieding({
+          klusId: klusIdSnapshot,
+          aannemerId,
+          prijs: parseInt(prijs),
+          doorlooptijd: doorloop,
+          bericht,
+        });
+        if (recoveredAanbieding?.id) break;
+      }
+      if (recoveredAanbieding?.id) {
+        closeModal();
+        trackEvent('aanbieding_submit_recovered_after_timeout', {
+          klus_id: klusIdSnapshot || null,
+          aanbieding_id: recoveredAanbieding.id,
+          duration_ms: Date.now() - aanbiedingSubmitStartedAt,
+        });
+        showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (hersteld na trage respons)');
+        return;
+      }
+    }
     trackEvent('aanbieding_submit_failed', {
       klus_id: klusIdSnapshot || null,
       reason: msg,
