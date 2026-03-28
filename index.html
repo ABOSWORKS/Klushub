@@ -592,6 +592,18 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
 .filter-drawer-body{flex:1;overflow-y:auto;padding:18px 22px}
 .filter-drawer-footer{padding:14px 22px;border-top:1px solid var(--gray-border);display:flex;gap:10px;flex-shrink:0}
 
+/* ── FOTO PORTFOLIO ──────────────────────────── */
+.portfolio-sec{padding:20px 28px 0;border-bottom:1px solid var(--gray-border)}
+.portfolio-sec-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#5A6480;letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.portfolio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.portfolio-thumb{border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer;position:relative;transition:transform .18s,box-shadow .18s}
+.portfolio-thumb:hover{transform:scale(1.04);box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.portfolio-thumb-inner{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.portfolio-thumb-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.3px;text-align:center;padding:0 6px}
+.portfolio-lightbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:20px}
+.portfolio-lightbox.open{display:flex}
+.portfolio-lightbox-inner{border-radius:20px;overflow:hidden;max-width:480px;width:100%;box-shadow:0 40px 80px rgba(0,0,0,.6)}
+
 /* ── RESPONSIVE ──────────────────────────────── */
 @media(max-width:960px){.sidebar,.kh-stats{display:none}.hero{grid-template-columns:1fr;padding:100px 5vw 60px;gap:36px}.score-sec{grid-template-columns:1fr;gap:40px}.price-grid{grid-template-columns:1fr}.foot-top{grid-template-columns:1fr 1fr}.place-full{padding:28px 24px}.perks{grid-template-columns:repeat(3,1fr)}.mobile-filter-btn{display:flex}}
 @media(max-width:640px){.nav-links{display:none}.hamburger{display:block}.foot-top{grid-template-columns:1fr}.foot-bot{flex-direction:column;gap:8px;text-align:center}.kbody{padding:14px 4vw 40px}.klus-card{padding:18px}.ptab{padding:0 18px}.ptab-sub{display:none}.perks{grid-template-columns:1fr}.place-full{margin:16px}.pr2,.hf-row-2,.form-row-2,.arow2{grid-template-columns:1fr}.auth-body{padding:20px}.bev-body{padding:20px 18px}.bev-top{padding:28px 18px 22px}.faq-content{padding:28px 4vw 60px}.review-body{padding:18px}.review-row{flex-direction:column;align-items:flex-start;gap:6px}.faq-tabs-bar{overflow-x:auto;-webkit-overflow-scrolling:touch}.faq-tab{padding:14px 16px;font-size:13px}}
@@ -2057,10 +2069,29 @@ function updateCatCounts(lijst) {
 // ══════════════════════════════════════════════════
 // 6. STATISTIEKEN
 // ══════════════════════════════════════════════════
+function animateStatCount(el, target, suffix) {
+  if (!el || isNaN(target) || target <= 0) return;
+  const duration = 1400;
+  const start = performance.now();
+  function step(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    // Easing: easeOutExpo
+    const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+    const current = Math.round(ease * target);
+    el.textContent = current.toLocaleString('nl-NL') + (suffix || '');
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 async function loadStats() {
   if (!sb) {
-    document.getElementById('stat-aannemers').textContent = '4.800+';
-    document.getElementById('stat-klussen').textContent = '23K';
+    const el1 = document.getElementById('stat-aannemers');
+    const el2 = document.getElementById('stat-klussen');
+    // Animate the demo numbers for wow-factor
+    animateStatCount(el1, 4800, '+');
+    animateStatCount(el2, 23000, '');
+    setTimeout(() => { if (el2) el2.textContent = '23K'; }, 1500);
     document.getElementById('kh-new').textContent = '—';
     return;
   }
@@ -2070,8 +2101,12 @@ async function loadStats() {
     sb.from('aannemers').select('*',{count:'exact',head:true}),
     sb.from('klussen').select('*',{count:'exact',head:true}).gte('aangemaakt',today),
   ]);
-  document.getElementById('stat-aannemers').textContent = aannemers ? aannemers.toLocaleString('nl-NL') : '4.800+';
-  document.getElementById('stat-klussen').textContent = totaal ? totaal.toLocaleString('nl-NL') : '23K';
+  const el1 = document.getElementById('stat-aannemers');
+  const el2 = document.getElementById('stat-klussen');
+  if (aannemers) animateStatCount(el1, aannemers, '');
+  else if (el1) el1.textContent = '4.800+';
+  if (totaal) animateStatCount(el2, totaal, '');
+  else if (el2) el2.textContent = '23K';
   document.getElementById('kh-new').textContent = vandaag || '0';
 }
 
@@ -3060,6 +3095,96 @@ async function loadAannemers() {
   }
 }
 
+// Portfolio demo data: gradient stops + icon + label per foto
+const DEMO_PORTFOLIO = {
+  d1: [ // Badkamer
+    {g:'linear-gradient(135deg,#1e40af,#3b82f6)',icon:'bath',label:'Badkamer renovatie'},
+    {g:'linear-gradient(135deg,#0369a1,#38bdf8)',icon:'droplets',label:'Douche installatie'},
+    {g:'linear-gradient(135deg,#1d4ed8,#60a5fa)',icon:'tile',label:'Tegels leggen'},
+    {g:'linear-gradient(135deg,#1e3a8a,#93c5fd)',icon:'wrench',label:'Sanitair vervangen'},
+  ],
+  d2: [ // Aanbouw
+    {g:'linear-gradient(135deg,#7c3aed,#a78bfa)',icon:'home',label:'Aanbouw opgeleverd'},
+    {g:'linear-gradient(135deg,#6d28d9,#c4b5fd)',icon:'hammer',label:'Dakkapel geplaatst'},
+    {g:'linear-gradient(135deg,#5b21b6,#ddd6fe)',icon:'building',label:'Uitbouw voltooid'},
+  ],
+  d3: [ // Schilderwerk
+    {g:'linear-gradient(135deg,#b45309,#f59e0b)',icon:'paint-roller',label:'Kozijnen geschilderd'},
+    {g:'linear-gradient(135deg,#92400e,#fcd34d)',icon:'palette',label:'Binnenschilderwerk'},
+    {g:'linear-gradient(135deg,#78350f,#fde68a)',icon:'layers',label:'Stucwerk afgewerkt'},
+    {g:'linear-gradient(135deg,#a16207,#fef08a)',icon:'brush',label:'Buitengevel'},
+  ],
+  d4: [ // Elektra
+    {g:'linear-gradient(135deg,#065f46,#34d399)',icon:'zap',label:'Meterkast vernieuwd'},
+    {g:'linear-gradient(135deg,#047857,#6ee7b7)',icon:'plug',label:'Groepen uitgebreid'},
+  ],
+  d5: [ // Keuken
+    {g:'linear-gradient(135deg,#9f1239,#f43f5e)',icon:'utensils',label:'Keuken geplaatst'},
+    {g:'linear-gradient(135deg,#881337,#fb7185)',label:'Blad op maat',icon:'layout-grid'},
+    {g:'linear-gradient(135deg,#be123c,#fda4af)',icon:'package',label:'Apparatuur ingebouwd'},
+  ],
+  d6: [ // Vloeren
+    {g:'linear-gradient(135deg,#134e4a,#2dd4bf)',icon:'layers',label:'Parket gelegd'},
+    {g:'linear-gradient(135deg,#115e59,#5eead4)',icon:'grid',label:'Tegelvloer badkamer'},
+    {g:'linear-gradient(135deg,#0f766e,#99f6e4)',icon:'move',label:'Vinylvloer woonkamer'},
+    {g:'linear-gradient(135deg,#0d9488,#ccfbf1)',icon:'check-square',label:'Plinten geplaatst'},
+  ],
+};
+
+function buildPortfolioGrid(a) {
+  const sec = document.getElementById('ap-portfolio-sec');
+  const grid = document.getElementById('ap-portfolio-grid');
+  if (!sec || !grid) return;
+  // Check voor echte foto_urls array (toekomstige Supabase upload)
+  const realFotos = Array.isArray(a.foto_urls) && a.foto_urls.length > 0;
+  const demoFotos = DEMO_PORTFOLIO[a.id];
+  if (!realFotos && !demoFotos) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  if (realFotos) {
+    grid.innerHTML = a.foto_urls.map((url, i) =>
+      `<div class="portfolio-thumb" onclick="openPortfolioLightbox('${escAttr(url)}','')">
+        <img src="${escHtml(url)}" style="width:100%;height:100%;object-fit:cover;" alt="Werkfoto ${i+1}">
+      </div>`
+    ).join('');
+  } else {
+    grid.innerHTML = demoFotos.map((f,i) =>
+      `<div class="portfolio-thumb" onclick="openPortfolioLightbox(null,${i},'${escAttr(a.id)}')"
+            style="${f.g ? '' : ''}">
+        <div class="portfolio-thumb-inner" style="background:${f.g};">
+          <i data-lucide="${f.icon}" style="width:28px;height:28px;stroke:rgba(255,255,255,.85);fill:none;margin:0;stroke-width:2;"></i>
+          <div class="portfolio-thumb-label">${escHtml(f.label)}</div>
+        </div>
+      </div>`
+    ).join('');
+  }
+  if (window.lucide) lucide.createIcons({ els: [grid] });
+}
+
+function openPortfolioLightbox(url, idx, aannemerId) {
+  const lb = document.getElementById('portfolioLightbox');
+  const inner = document.getElementById('portfolioLightboxInner');
+  if (!lb || !inner) return;
+  if (url) {
+    inner.innerHTML = `<img src="${escHtml(url)}" style="width:100%;display:block;" alt="Werkfoto">`;
+  } else {
+    const fotos = DEMO_PORTFOLIO[aannemerId] || [];
+    const f = fotos[idx];
+    if (!f) return;
+    inner.innerHTML = `<div style="background:${f.g};padding:80px 40px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;min-height:280px;justify-content:center;">
+      <i data-lucide="${f.icon}" style="width:64px;height:64px;stroke:rgba(255,255,255,.9);fill:none;margin:0;stroke-width:1.5;"></i>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:#fff;">${escHtml(f.label)}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.65);">Klik buiten dit venster om te sluiten</div>
+    </div>`;
+    if (window.lucide) lucide.createIcons({ els: [inner] });
+  }
+  lb.classList.add('open');
+}
+
+function closePortfolioLightbox() {
+  const lb = document.getElementById('portfolioLightbox');
+  if (lb) lb.classList.remove('open');
+}
+
 function renderDemoAannemers() {
   allAannemers = [
     { id:'d1', voornaam:'Remco', achternaam:'Bakker', bedrijfsnaam:'R. Bakker Renovaties', specialisme:'Badkamer & sanitair', stad:'Amsterdam', abonnement:'pro', avg:4.9, avg_kwaliteit:4.9, avg_communicatie:4.8, avg_prijs_kwaliteit:4.7, avg_tijdigheid:5.0, avg_netheid:5.0, review_count:42, reviews:[
@@ -3251,6 +3376,9 @@ async function openAannemerProfiel(id) {
       <span style="font-size:11px;font-weight:700;color:var(--yellow);width:24px;text-align:right;">${val>0?val.toFixed(1):'—'}</span>
     </div>`;
   }).join('');
+
+  // Portfolio foto's
+  buildPortfolioGrid(a);
 
   // Reviews
   renderAannemerReviews(a);
@@ -4019,17 +4147,35 @@ async function waitForLibraries() {
         <div style="flex:1;display:flex;flex-direction:column;gap:6px;" id="ap-score-bars"></div>
       </div>
     </div>
-    <div class="mbody" style="padding:20px 28px;max-height:400px;overflow-y:auto;" id="ap-body">
+    <!-- Portfolio foto's -->
+    <div class="portfolio-sec" id="ap-portfolio-sec" style="display:none;">
+      <div class="portfolio-sec-title"><i data-lucide="image" style="width:13px;height:13px;stroke:#5A6480;fill:none;margin:0;"></i> Werkfoto's</div>
+      <div class="portfolio-grid" id="ap-portfolio-grid"></div>
+    </div>
+    <div class="mbody" style="padding:20px 28px;max-height:340px;overflow-y:auto;" id="ap-body">
       <div style="text-align:center;padding:30px;color:var(--gray-text);">
         <div class="spinner spinner-dark" style="width:24px;height:24px;border-width:2px;margin:0 auto 8px;"></div>
         <div>Reviews laden…</div>
       </div>
     </div>
+    <!-- Beschikbaarheidsstatus + contact footer -->
+    <div style="padding:12px 28px 10px;background:#F8FAFf;border-top:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <div id="ap-beschikbaar" style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;">
+        <span style="width:9px;height:9px;border-radius:50%;background:#16A34A;display:inline-block;box-shadow:0 0 0 3px rgba(22,163,74,.2);flex-shrink:0;"></span>
+        <span style="color:#166534;">Beschikbaar voor nieuwe klussen</span>
+      </div>
+      <div style="font-size:11px;color:#9CA3AF;">Reageert gemiddeld binnen 4 uur</div>
+    </div>
     <div style="padding:16px 28px 24px;border-top:1px solid var(--gray-border);display:flex;gap:10px;">
       <button onclick="closeAannemerProfiel()" class="edit-cancel" style="flex:1;">Sluiten</button>
-      <button onclick="closeAannemerProfiel();showPage('klussen');switchP('plaatsen');" class="btn-aanbieden" style="flex:2;padding:11px;font-size:16px;">Klus plaatsen →</button>
+      <button onclick="closeAannemerProfiel();showPage('klussen');switchP('plaatsen');" class="btn-aanbieden" style="flex:2;padding:11px;font-size:16px;">Klus plaatsen &amp; aannemer uitnodigen →</button>
     </div>
   </div>
+</div>
+
+<!-- Portfolio Lightbox -->
+<div class="portfolio-lightbox" id="portfolioLightbox" onclick="closePortfolioLightbox()">
+  <div class="portfolio-lightbox-inner" id="portfolioLightboxInner"></div>
 </div>
 
 </body>
