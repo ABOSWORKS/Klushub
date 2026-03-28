@@ -243,6 +243,49 @@ footer{background:#070E22;color:rgba(255,255,255,.5);padding:56px 5vw 28px}
 .ac-item-sub{font-size:11px;color:var(--gray-text)}
 .ac-section-hdr{padding:5px 14px 3px;font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--gray-text);text-transform:uppercase;background:#fafbff}
 .ac-no-results{padding:12px 14px;font-size:13px;color:var(--gray-text);text-align:center}
+/* ── Reviews pagina ─────────────────────────────────────────── */
+.rv-page-hero{background:linear-gradient(135deg,var(--blue-dark) 0%,#1a3a8f 100%);color:#fff;padding:60px 5vw 48px;text-align:center}
+.rv-page-hero h1{font-family:'Barlow Condensed',sans-serif;font-size:clamp(28px,5vw,46px);font-weight:900;margin-bottom:10px}
+.rv-page-hero p{font-size:16px;opacity:.8;max-width:480px;margin:0 auto 32px}
+.rv-stats-row{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;margin-bottom:0}
+.rv-stat{text-align:center}
+.rv-stat-num{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:var(--yellow)}
+.rv-stat-lbl{font-size:13px;opacity:.75}
+.rv-filters{background:#fff;border-bottom:1px solid var(--gray-border);padding:16px 5vw;display:flex;gap:10px;flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:10}
+.rv-filter-lbl{font-size:13px;font-weight:700;color:var(--gray-text);margin-right:4px}
+.rv-chip{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:700;border:1.5px solid var(--gray-border);background:#fff;cursor:pointer;transition:all .2s;color:var(--text-dark)}
+.rv-chip:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
+.rv-chip.active{background:var(--blue-dark);color:#fff;border-color:var(--blue-dark)}
+.rv-body{max-width:1200px;margin:0 auto;padding:40px 5vw 80px}
+.rv-overview{display:grid;grid-template-columns:280px 1fr;gap:32px;margin-bottom:48px;align-items:start}
+@media(max-width:700px){.rv-overview{grid-template-columns:1fr}}
+.rv-score-card{background:#fff;border-radius:20px;padding:28px;border:1px solid var(--gray-border);box-shadow:0 4px 16px rgba(0,0,0,.06)}
+.rv-big-score{font-family:'Barlow Condensed',sans-serif;font-size:64px;font-weight:900;color:var(--blue-dark);line-height:1}
+.rv-stars-lg{font-size:22px;color:var(--yellow);letter-spacing:2px;margin:6px 0 4px}
+.rv-score-row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px}
+.rv-score-bar-bg{flex:1;height:8px;background:#eef0f7;border-radius:100px;overflow:hidden}
+.rv-score-bar-fill{height:100%;background:linear-gradient(90deg,var(--yellow),#e6b000);border-radius:100px;transition:width .6s ease}
+.rv-score-lbl{width:90px;color:var(--gray-text);font-size:12px}
+.rv-score-val{width:28px;text-align:right;font-weight:700;color:var(--blue-dark)}
+.rv-dist{margin-top:16px}
+.rv-dist-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+.rv-dist-bar-bg{flex:1;height:6px;background:#eef0f7;border-radius:100px;overflow:hidden}
+.rv-dist-bar-fill{height:100%;background:var(--yellow);border-radius:100px}
+.rv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.rv-card{background:#fff;border-radius:16px;padding:24px;border:1px solid var(--gray-border);box-shadow:0 2px 8px rgba(0,0,0,.05);transition:box-shadow .2s}
+.rv-card:hover{box-shadow:0 8px 24px rgba(11,31,74,.1)}
+.rv-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.rv-card-av{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:15px;color:#fff;flex-shrink:0}
+.rv-card-meta{margin-left:12px;flex:1}
+.rv-card-name{font-weight:700;font-size:14px;color:var(--blue-dark)}
+.rv-card-sub{font-size:12px;color:var(--gray-text);margin-top:1px}
+.rv-card-stars{color:var(--yellow);font-size:15px;letter-spacing:1px}
+.rv-card-tekst{font-size:14px;line-height:1.55;color:var(--text-dark);margin-bottom:14px}
+.rv-card-footer{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--gray-text);padding-top:12px;border-top:1px solid #f0f4ff}
+.rv-card-tag{background:#f0f4ff;color:var(--blue-mid);padding:3px 9px;border-radius:100px;font-size:11px;font-weight:700}
+.rv-aannemer-chip{display:flex;align-items:center;gap:8px;background:#f8faff;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:13px}
+.rv-aannemer-av{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;color:#fff}
+.rv-empty{text-align:center;padding:60px 20px;color:var(--gray-text);font-size:15px}
 .tb-sep{width:1px;height:26px;background:var(--gray-border)}
 .sort-sel{padding:7px 11px;border:1.5px solid var(--gray-border);border-radius:8px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;color:var(--text-dark);background:var(--gray-soft);outline:none;cursor:pointer}
 .tb-right{margin-left:auto;display:flex;align-items:center;gap:8px}
@@ -727,7 +770,7 @@ input[type=range].pc-slider{width:100%;height:6px;border-radius:3px;accent-color
     <li><a onclick="goLanding('#hoe')">Hoe werkt het</a></li>
     <li><a onclick="showPage('klussen');switchP('klussen')">Openstaande klussen</a></li>
     <li><a onclick="showPage('aannemers')">Aannemers</a></li>
-    <li><a onclick="goLanding('#reviews')">Reviews</a></li>
+    <li><a onclick="showPage('reviews')">Reviews</a></li>
     <li><a onclick="goLanding('#prijzen')">Prijzen</a></li>
     <li><a onclick="showPage('faq')">FAQ &amp; Handleidingen</a></li>
   </ul>
@@ -778,7 +821,7 @@ input[type=range].pc-slider{width:100%;height:6px;border-radius:3px;accent-color
       <li><a onclick="closeMobileNav();goLanding('#hoe')"><i data-lucide="help-circle" style="width:18px;height:18px;margin:0"></i> Hoe werkt het</a></li>
       <li><a onclick="closeMobileNav();showPage('klussen');switchP('klussen')"><i data-lucide="search" style="width:18px;height:18px;margin:0"></i> Openstaande klussen</a></li>
       <li><a onclick="closeMobileNav();showPage('aannemers')"><i data-lucide="users" style="width:18px;height:18px;margin:0"></i> Aannemers</a></li>
-      <li><a onclick="closeMobileNav();goLanding('#reviews')"><i data-lucide="star" style="width:18px;height:18px;margin:0"></i> Reviews</a></li>
+      <li><a onclick="closeMobileNav();showPage('reviews')"><i data-lucide="star" style="width:18px;height:18px;margin:0"></i> Reviews</a></li>
       <li><a onclick="closeMobileNav();goLanding('#prijzen')"><i data-lucide="credit-card" style="width:18px;height:18px;margin:0"></i> Prijzen</a></li>
       <li><a onclick="closeMobileNav();showPage('faq')"><i data-lucide="book-open" style="width:18px;height:18px;margin:0"></i> FAQ &amp; Handleidingen</a></li>
     </ul>
@@ -2422,11 +2465,20 @@ async function loadMijnKlussen() {
   }
 
   // Aanbiedingen ophalen (samen met gekoppelde klus data)
-  const { data, error } = await sb
-    .from('aanbiedingen')
-    .select('*, klussen(*)')
-    .eq('aannemer_id', currentUser.id)
-    .order('aangemaakt', { ascending: false });
+  let data, error;
+  try {
+    const TIMEOUT = 6000;
+    const tout = new Promise((_, rej) => setTimeout(() => rej(new Error('aanbiedingen-timeout')), TIMEOUT));
+    const result = await Promise.race([
+      sb.from('aanbiedingen').select('*, klussen(*)').eq('aannemer_id', currentUser.id).order('aangemaakt', { ascending: false }),
+      tout
+    ]);
+    data = result.data; error = result.error;
+  } catch(e) {
+    body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="wifi-off" style="width:40px;height:40px;opacity:0.4;margin:0 auto 12px"></i></div><div style="font-size:15px;font-weight:600">Verbinding traag</div><p style="font-size:13px;color:var(--gray-text);margin-top:6px">Probeer het opnieuw.</p><button class="btn-p" style="margin-top:14px;font-size:13px;padding:8px 18px" onclick="loadMijnKlussen()">Opnieuw proberen</button></div>';
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
 
   if (error) { body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt</div></div>'; return; }
   
@@ -2987,35 +3039,38 @@ async function submitAanbieding() {
   if (!prijs) { showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Vul een prijs in', true); return; }
   const btn = document.getElementById('m-send-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-  if (!sb || !currentKlusId || currentKlusId.startsWith('demo')) {
-    await new Promise(r => setTimeout(r, 700));
-    btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
-    closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)'); return;
-  }
-  const { data: bidData, error } = await sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht }).select();
-  btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
-  if (error) {
-    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
-  } else {
-    // Get job details for email notification
-    const { data: klusData } = await sb.from('klussen').select('email_klant, omschrijving').eq('id', currentKlusId).single();
-
-    // Send notification to customer
-    if (klusData?.email_klant) {
-      await sendEmailNotification('bid_received', klusData.email_klant, {
-        omschrijving: klusData.omschrijving,
-        aannemer: {
-          voornaam: currentUser.voornaam || 'Een vakman',
-          achternaam: currentUser.achternaam || '',
-          rating: currentUser.score || 0
-        },
-        prijs: prijs,
-        doorloop: doorloop
-      }).catch(e => console.warn('Bid email failed:', e));
+  try {
+    if (!sb || !currentKlusId || currentKlusId.startsWith('demo')) {
+      await new Promise(r => setTimeout(r, 700));
+      closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)'); return;
     }
-
-    closeModal();
-    showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!');
+    const TIMEOUT = 8000;
+    const tout = new Promise((_, rej) => setTimeout(() => rej(new Error('aanbieding-timeout')), TIMEOUT));
+    const { data: bidData, error } = await Promise.race([
+      sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht }).select(),
+      tout
+    ]);
+    if (error) {
+      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
+    } else {
+      closeModal();
+      showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!');
+      // Email notificatie fire-and-forget (mag falen zonder UX te breken)
+      sb.from('klussen').select('email_klant, omschrijving').eq('id', currentKlusId).single().then(function(res) {
+        if (res.data && res.data.email_klant) {
+          sendEmailNotification('bid_received', res.data.email_klant, {
+            omschrijving: res.data.omschrijving,
+            aannemer: { voornaam: currentUser.voornaam || 'Een vakman', achternaam: currentUser.achternaam || '', rating: currentUser.score || 0 },
+            prijs: prijs, doorloop: doorloop
+          }).catch(function(e) { console.warn('Bid email failed:', e); });
+        }
+      }).catch(function(e) { console.warn('Klus email lookup failed:', e); });
+    }
+  } catch(e) {
+    console.warn('[submitAanbieding] Fout of timeout:', e.message);
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Verbinding traag — probeer opnieuw', true);
+  } finally {
+    btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
   }
 }
 
@@ -3137,6 +3192,7 @@ function showPage(id) {
   if (id==='landing') initReveal();
   if (id==='klussen') { loadKlussen(); }
   if (id==='aannemers') { renderDemoAannemers(); loadAannemers(); }
+  if (id==='reviews') { initReviewsPage(); }
   if (id==='faq') {
     const firstTab = document.querySelector('#page-faq .faq-tab');
     openFaqSection('stappenplan', firstTab);
@@ -3783,6 +3839,73 @@ document.addEventListener('click', function(e) {
 });
 // ─── END AUTOCOMPLETE ───────────────────────────────────────────────────────
 
+// ─── REVIEWS PAGINA ─────────────────────────────────────────────────────────
+var RV_DATA = [
+  { naam:'Sandra V.', ini:'SV', kleur:'#1a5276', regio:'amsterdam', type:'badkamer', aannemer:'R. Bakker Renovaties', sterren:5, tekst:'Via Klushub kregen we binnen 2 dagen vijf aanbiedingen voor onze badkamer. Uiteindelijk 30% minder betaald dan onze eerste offerte. Remco was netjes, punctueel en leverde uitstekend werk. Absolute aanrader!', datum:'15 feb 2026' },
+  { naam:'Mark K.', ini:'MK', kleur:'#1a6b3a', regio:'utrecht', type:'aanbouw', aannemer:'Van Dijk Bouw', sterren:5, tekst:'De aannemer die ik via Klushub vond had 48 vijfsterren-reviews. Keurig werk aan onze zolderkamer en op tijd klaar. Het vergelijken van aanbiedingen was super handig.', datum:'3 feb 2026' },
+  { naam:'Remco B.', ini:'RB', kleur:'#8B3A1A', regio:'rotterdam', type:'schilderwerk', aannemer:'P. Hendriks Schilders', sterren:4, tekst:'Als aannemer ben ik dankzij Klushub van 2 naar 6 projecten per maand gegaan. Het platform werkt echt. Klanten zijn goed geïnformeerd en weten wat ze willen.', datum:'1 mrt 2026' },
+  { naam:'Lisa M.', ini:'LM', kleur:'#6c3483', regio:'amsterdam', type:'keuken', aannemer:'Visser Keukens', sterren:5, tekst:'Onze keuken is prachtig geworden! Sander was enorm vakbekwaam en heeft precies gedaan wat we wilden. Via Klushub kon ik makkelijk meerdere vakmensen vergelijken op prijs én reviews.', datum:'20 jan 2026' },
+  { naam:'Tom H.', ini:'TH', kleur:'#0e6655', regio:'denhaag', type:'elektra', aannemer:'De Groot Elektro', sterren:5, tekst:'Meterkast vervangen door Marco. Duidelijke uitleg, nette afwerking en klaar binnen een dag. De verificatie van aannemers via Klushub geeft echt vertrouwen.', datum:'14 jan 2026' },
+  { naam:'Anita W.', ini:'AW', kleur:'#7d6608', regio:'utrecht', type:'vloeren', aannemer:'Smits Vloeren', sterren:5, tekst:'Nieuwe houten vloer in de hele woonkamer gelegd. Tom werkte netjes en snel. Al het meubilair werd keurig beschermd. Ziet er prachtig uit! Klushub heeft het zoeken enorm makkelijk gemaakt.', datum:'22 feb 2026' },
+  { naam:'Bas R.', ini:'BR', kleur:'#1a5276', regio:'amsterdam', type:'badkamer', aannemer:'R. Bakker Renovaties', sterren:5, tekst:'Tweede keer dat ik Remco heb ingehuurd. Eerste keer badkamer, nu de gastenbadkamer. Zelfde hoge kwaliteit. Als iemand zo goed is ga je niet meer zoeken.', datum:'8 mrt 2026' },
+  { naam:'Femke D.', ini:'FD', kleur:'#922b21', regio:'rotterdam', type:'aanbouw', aannemer:'Van Dijk Bouw', sterren:4, tekst:'Dakkapel laten plaatsen. Jan is een ervaren vakman maar de planning liep iets uit. Communicatie was prima en het eindresultaat ziet er mooi uit. Klushub recensies klopten precies.', datum:'27 jan 2026' },
+  { naam:'Peter J.', ini:'PJ', kleur:'#117a65', regio:'overig', type:'schilderwerk', aannemer:'P. Hendriks Schilders', sterren:5, tekst:'Pieter heeft onze hele buitengevel geschilderd. Perfecte afwerking, schone werkplek en vriendelijke communicatie. Beste aannemer die we ooit hebben gehad via welk platform dan ook.', datum:'10 mrt 2026' },
+  { naam:'Noor S.', ini:'NS', kleur:'#6c3483', regio:'denhaag', type:'keuken', aannemer:'Visser Keukens', sterren:5, tekst:'Keuken volledig verbouwd inclusief eiland. Sander dacht mee over de indeling en stelde handige alternatieven voor. Binnen budget en op tijd opgeleverd!', datum:'5 feb 2026' },
+  { naam:'Kees V.', ini:'KV', kleur:'#0e6655', regio:'amsterdam', type:'elektra', aannemer:'De Groot Elektro', sterren:5, tekst:'Groepenkast en buitenverlichting laten aanpassen. Marco deed het vakkundig en legde alles goed uit. Weet zeker dat ik hem weer inhuur voor de volgende klus.', datum:'18 feb 2026' },
+  { naam:'Inge P.', ini:'IP', kleur:'#7d6608', regio:'overig', type:'vloeren', aannemer:'Smits Vloeren', sterren:4, tekst:'Visgraat vloer laten leggen in de woonkamer. Mooi resultaat. Enige minpuntje was dat er twee plankjes iets scheef lagen, maar Tom heeft dat direct opgelost na ons telefoontje.', datum:'14 mrt 2026' },
+];
+
+var rvActiveRegio = 'alle';
+var rvActiveType = 'alle';
+
+function setRvFilter(groep, el, val) {
+  if (groep === 'regio') {
+    rvActiveRegio = val;
+    document.querySelectorAll('[data-rv-regio]').forEach(function(c) { c.classList.toggle('active', c.getAttribute('data-rv-regio') === val); });
+  } else {
+    rvActiveType = val;
+    document.querySelectorAll('[data-rv-type]').forEach(function(c) { c.classList.toggle('active', c.getAttribute('data-rv-type') === val); });
+  }
+  renderRvGrid();
+}
+
+function renderRvGrid() {
+  var grid = document.getElementById('rv-grid');
+  if (!grid) return;
+  var lijst = RV_DATA.filter(function(r) {
+    var regioOk = rvActiveRegio === 'alle' || r.regio === rvActiveRegio;
+    var typeOk  = rvActiveType  === 'alle' || r.type  === rvActiveType;
+    return regioOk && typeOk;
+  });
+  if (lijst.length === 0) {
+    grid.innerHTML = '<div class="rv-empty">Geen reviews gevonden voor deze filter.</div>';
+    return;
+  }
+  var sterrenMap = function(n) { return '★'.repeat(n) + (n < 5 ? '<span style="opacity:.25">' + '★'.repeat(5-n) + '</span>' : ''); };
+  var typeLabels = { badkamer:'Badkamer', keuken:'Keuken', schilderwerk:'Schilderwerk', elektra:'Elektra', aanbouw:'Aanbouw', vloeren:'Vloeren' };
+  grid.innerHTML = lijst.map(function(r) {
+    return '<div class="rv-card">'
+      + '<div class="rv-aannemer-chip"><div class="rv-aannemer-av" style="background:' + r.kleur + '">' + escHtml(r.ini.substring(0,1)) + '</div>'
+      + '<span style="font-size:12px;font-weight:700;color:var(--blue-dark)">' + escHtml(r.aannemer) + '</span>'
+      + '<span class="rv-card-tag" style="margin-left:auto">' + escHtml(typeLabels[r.type] || r.type) + '</span></div>'
+      + '<p class="rv-card-tekst">"' + escHtml(r.tekst) + '"</p>'
+      + '<div class="rv-card-footer">'
+      + '<div style="display:flex;align-items:center;gap:10px"><div class="rv-card-av" style="background:' + r.kleur + ';width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:12px;color:#fff">' + escHtml(r.ini) + '</div>'
+      + '<div><div class="rv-card-name">' + escHtml(r.naam) + '</div><div class="rv-card-sub">' + escHtml(r.datum) + '</div></div></div>'
+      + '<div class="rv-card-stars">' + sterrenMap(r.sterren) + '</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function initReviewsPage() {
+  rvActiveRegio = 'alle';
+  rvActiveType = 'alle';
+  document.querySelectorAll('[data-rv-regio]').forEach(function(c) { c.classList.toggle('active', c.getAttribute('data-rv-regio') === 'alle'); });
+  document.querySelectorAll('[data-rv-type]').forEach(function(c) { c.classList.toggle('active', c.getAttribute('data-rv-type') === 'alle'); });
+  renderRvGrid();
+}
+// ─── END REVIEWS ─────────────────────────────────────────────────────────────
+
 function onAnSortChange(val) {
   anFilterState.sorteer = val;
   applyAnFilters();
@@ -4377,6 +4500,62 @@ async function waitForLibraries() {
   }
 })();
 </script>
+
+<!-- ══ REVIEWS PAGINA ══════════════════════════════════════════ -->
+<div id="page-reviews" class="page">
+  <div class="rv-page-hero">
+    <div class="breadcrumb" style="justify-content:center;margin-bottom:16px;opacity:.7"><a onclick="showPage('landing')">Home</a><span>›</span><span>Reviews</span></div>
+    <h1>Wat klanten zeggen</h1>
+    <p>Echte ervaringen van klanten die een vakman vonden via Klushub</p>
+    <div class="rv-stats-row">
+      <div class="rv-stat"><div class="rv-stat-num">4.8</div><div class="rv-stat-lbl">Gemiddelde score</div></div>
+      <div class="rv-stat"><div class="rv-stat-num">142</div><div class="rv-stat-lbl">Verified reviews</div></div>
+      <div class="rv-stat"><div class="rv-stat-num">94%</div><div class="rv-stat-lbl">Beveelt aan</div></div>
+    </div>
+  </div>
+  <div class="rv-filters" id="rv-filters">
+    <span class="rv-filter-lbl">Regio:</span>
+    <button class="rv-chip active" data-rv-regio="alle" onclick="setRvFilter('regio',this,'alle')">Alle regio's</button>
+    <button class="rv-chip" data-rv-regio="amsterdam" onclick="setRvFilter('regio',this,'amsterdam')">Amsterdam</button>
+    <button class="rv-chip" data-rv-regio="rotterdam" onclick="setRvFilter('regio',this,'rotterdam')">Rotterdam</button>
+    <button class="rv-chip" data-rv-regio="utrecht" onclick="setRvFilter('regio',this,'utrecht')">Utrecht</button>
+    <button class="rv-chip" data-rv-regio="denhaag" onclick="setRvFilter('regio',this,'denhaag')">Den Haag</button>
+    <button class="rv-chip" data-rv-regio="overig" onclick="setRvFilter('regio',this,'overig')">Overig</button>
+    <span class="rv-filter-lbl" style="margin-left:12px">Type:</span>
+    <button class="rv-chip active" data-rv-type="alle" onclick="setRvFilter('type',this,'alle')">Alle klussen</button>
+    <button class="rv-chip" data-rv-type="badkamer" onclick="setRvFilter('type',this,'badkamer')">Badkamer</button>
+    <button class="rv-chip" data-rv-type="keuken" onclick="setRvFilter('type',this,'keuken')">Keuken</button>
+    <button class="rv-chip" data-rv-type="schilderwerk" onclick="setRvFilter('type',this,'schilderwerk')">Schilderwerk</button>
+    <button class="rv-chip" data-rv-type="elektra" onclick="setRvFilter('type',this,'elektra')">Elektra</button>
+    <button class="rv-chip" data-rv-type="aanbouw" onclick="setRvFilter('type',this,'aanbouw')">Aanbouw</button>
+    <button class="rv-chip" data-rv-type="vloeren" onclick="setRvFilter('type',this,'vloeren')">Vloeren</button>
+  </div>
+  <div class="rv-body">
+    <div class="rv-overview">
+      <div class="rv-score-card">
+        <div class="rv-big-score">4.8</div>
+        <div class="rv-stars-lg">★★★★★</div>
+        <div style="font-size:13px;color:var(--gray-text)">Gebaseerd op 142 reviews</div>
+        <div style="margin-top:20px">
+          <div class="rv-score-row"><span class="rv-score-lbl">Kwaliteit</span><div class="rv-score-bar-bg"><div class="rv-score-bar-fill" style="width:96%"></div></div><span class="rv-score-val">4.8</span></div>
+          <div class="rv-score-row"><span class="rv-score-lbl">Communicatie</span><div class="rv-score-bar-bg"><div class="rv-score-bar-fill" style="width:94%"></div></div><span class="rv-score-val">4.7</span></div>
+          <div class="rv-score-row"><span class="rv-score-lbl">Prijs/kwal.</span><div class="rv-score-bar-bg"><div class="rv-score-bar-fill" style="width:90%"></div></div><span class="rv-score-val">4.5</span></div>
+          <div class="rv-score-row"><span class="rv-score-lbl">Tijdigheid</span><div class="rv-score-bar-bg"><div class="rv-score-bar-fill" style="width:92%"></div></div><span class="rv-score-val">4.6</span></div>
+          <div class="rv-score-row"><span class="rv-score-lbl">Netheid</span><div class="rv-score-bar-bg"><div class="rv-score-bar-fill" style="width:98%"></div></div><span class="rv-score-val">4.9</span></div>
+        </div>
+        <div class="rv-dist" style="margin-top:20px;border-top:1px solid #f0f4ff;padding-top:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--gray-text);margin-bottom:10px">Verdeling scores</div>
+          <div class="rv-dist-row"><span style="width:20px;text-align:right">5★</span><div class="rv-dist-bar-bg"><div class="rv-dist-bar-fill" style="width:72%"></div></div><span style="width:30px;text-align:right;color:var(--gray-text)">72%</span></div>
+          <div class="rv-dist-row"><span style="width:20px;text-align:right">4★</span><div class="rv-dist-bar-bg"><div class="rv-dist-bar-fill" style="width:18%"></div></div><span style="width:30px;text-align:right;color:var(--gray-text)">18%</span></div>
+          <div class="rv-dist-row"><span style="width:20px;text-align:right">3★</span><div class="rv-dist-bar-bg"><div class="rv-dist-bar-fill" style="width:7%"></div></div><span style="width:30px;text-align:right;color:var(--gray-text)">7%</span></div>
+          <div class="rv-dist-row"><span style="width:20px;text-align:right">2★</span><div class="rv-dist-bar-bg"><div class="rv-dist-bar-fill" style="width:2%"></div></div><span style="width:30px;text-align:right;color:var(--gray-text)">2%</span></div>
+          <div class="rv-dist-row"><span style="width:20px;text-align:right">1★</span><div class="rv-dist-bar-bg"><div class="rv-dist-bar-fill" style="width:1%"></div></div><span style="width:30px;text-align:right;color:var(--gray-text)">1%</span></div>
+        </div>
+      </div>
+      <div id="rv-grid" class="rv-grid"><!-- JS vult dit --></div>
+    </div>
+  </div>
+</div>
 
 <!-- ══ FAQ PAGINA ═════════════════════════════════════════════ -->
 <div id="page-faq" class="page faq-page">
