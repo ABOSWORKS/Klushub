@@ -74,3 +74,26 @@
 - Volgende logische AI-actie:
   1. Productie-verificatiepad in Supabase Invocations uitvoeren op 401/502 met `request_id` correlatie.
   2. Trust Snapshot doortrekken naar aannemer-profielkaarten voor lokale keuze-optimalisatie.
+
+## 2026-03-28 (user QA follow-up fixes)
+- Probleem opgelost:
+  - Regiofilter op open klussen was te permissief bij ontbrekende locatie-data.
+  - Aannemer-reviewpaneel had een onlogische klantfilter (`Geverifieerd`) als losse toggle.
+  - Reviews-tab miste interactieve klantfilters.
+  - `Mijn aanbiedingen` kreeg extra watchdog-fallback om oneindig laden te voorkomen.
+- Keuze:
+  - Regiofilter strikt gemaakt: bij actieve regiofilter worden klussen zonder bruikbare locatie niet meer doorgelaten.
+  - `loadMijnKlussen` voorzien van watchdog-state + force-retry knop.
+  - `Geverifieerd` checkbox uit aannemer-review feed verwijderd; sort/min-score/zoek blijven.
+  - Reviews-tab uitgebreid met filters (zoek, min-score, verified-only, sortering).
+  - Nieuwe smokes:
+    - `tests/smoke/klussen-regio-strict.smoke.js`
+    - `tests/smoke/reviews-filters.smoke.js`
+- Testevidence:
+  - `KLUSSEN_REGIO_STRICT_OK`
+  - `REVIEWS_FILTERS_OK`
+  - `MIJN_AANBIEDINGEN_RELOAD_OK`
+  - `REVIEWS_TRUST_SNAPSHOT_OK`
+  - `EMAIL_CHAIN_DIAGNOSTICS_OK`
+  - `OPEN_KLUSSEN_ISOLATION_OK`
+  - `SMOKE_OK`

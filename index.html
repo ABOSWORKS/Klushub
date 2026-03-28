@@ -835,6 +835,23 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
       </div>
     </div>
     <div id="reviewsTrustSnapshot" style="margin-bottom:16px;"></div>
+    <div id="reviewsPageFilters" style="display:grid;grid-template-columns:1.2fr .9fr .9fr .9fr;gap:8px;margin-bottom:12px;">
+      <input id="rv-filter-search" class="form-input" style="font-size:13px;padding:10px;" placeholder="Zoek op stad, aannemer of reviewtekst" oninput="onReviewsPageFilterChange()">
+      <select id="rv-filter-score" class="form-input" style="font-size:13px;padding:10px;" onchange="onReviewsPageFilterChange()">
+        <option value="0">Alle scores</option>
+        <option value="4">4.0+</option>
+        <option value="4.5">4.5+</option>
+      </select>
+      <select id="rv-filter-verified" class="form-input" style="font-size:13px;padding:10px;" onchange="onReviewsPageFilterChange()">
+        <option value="all">Alle reviews</option>
+        <option value="verified">Alleen geverifieerd</option>
+      </select>
+      <select id="rv-filter-sort" class="form-input" style="font-size:13px;padding:10px;" onchange="onReviewsPageFilterChange()">
+        <option value="recent">Meest recent</option>
+        <option value="score_desc">Hoogste score</option>
+        <option value="score_asc">Laagste score</option>
+      </select>
+    </div>
     <div id="reviewsPageList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;"></div>
     <div style="margin-top:16px;background:#fff;border:1px dashed var(--gray-border);border-radius:14px;padding:14px;">
       <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:4px;">Nog geen data in productie?</div>
@@ -2224,7 +2241,7 @@ function applyFilters() {
       let target = null;
       if (k.lat && k.lng) target = { lat: k.lat, lng: k.lng };
       else if (k.stad) target = getStadCoords(k.stad);
-      if (!target) return true;
+      if (!target) return false;
       const d = haversineKm(filterState.lat, filterState.lng, target.lat, target.lng);
       return d <= filterState.radius;
     });
@@ -2973,6 +2990,15 @@ async function loadMijnKlussen(options = {}) {
   }
   const requestSeq = ++mijnAanbiedingenLoadSeq;
   const isLatestLoad = () => requestSeq === mijnAanbiedingenLoadSeq;
+  const watchdogId = setTimeout(() => {
+    if (!isLatestLoad()) return;
+    const bodyEl = document.getElementById('mkp-body');
+    if (!bodyEl) return;
+    if (!/Laden/i.test(bodyEl.textContent || '')) return;
+    bodyEl.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="hourglass" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden duurt langer dan verwacht</div><p style="font-size:13px;margin-top:6px">Probeer opnieuw. Als dit blijft gebeuren, controleer je accountrechten in Supabase.</p><button class="btn-p" style="font-size:13px;padding:8px 16px;margin-top:12px" onclick="loadMijnKlussen({ force: true })">Opnieuw laden</button></div>';
+    if (window.lucide) lucide.createIcons();
+    trackEvent('mijn_aanbiedingen_watchdog_triggered', { request_seq: requestSeq });
+  }, MIJN_AANBIEDINGEN_TIMEOUT_MS + 2000);
   mijnAanbiedingenLoadStartedAt = Date.now();
   mijnAanbiedingenLoadPromise = (async () => {
   const body = document.getElementById('mkp-body');
@@ -3034,7 +3060,7 @@ async function loadMijnKlussen(options = {}) {
   if (!isLatestLoad()) return;
 
   if (error) {
-    body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt</div><p style="font-size:13px;margin-top:6px">Probeer het opnieuw over enkele seconden.</p><button class="btn-p" style="font-size:13px;padding:8px 16px;margin-top:12px" onclick="loadMijnKlussen()">Opnieuw laden</button></div>';
+    body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt</div><p style="font-size:13px;margin-top:6px">Probeer het opnieuw over enkele seconden.</p><button class="btn-p" style="font-size:13px;padding:8px 16px;margin-top:12px" onclick="loadMijnKlussen({ force: true })">Opnieuw laden</button></div>';
     if (window.lucide) lucide.createIcons();
     return;
   }
@@ -3090,6 +3116,7 @@ async function loadMijnKlussen(options = {}) {
   try {
     await mijnAanbiedingenLoadPromise;
   } finally {
+    clearTimeout(watchdogId);
     if (isLatestLoad()) {
       mijnAanbiedingenLoadPromise = null;
       mijnAanbiedingenLoadStartedAt = 0;
@@ -3786,7 +3813,7 @@ async function saveEditKlus() {
   else {
     showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Klus bijgewerkt' + (nieuweStatus==='open' ? ' en weer actief!' : '!'));
     closeEditKlus();
-    await loadMijnKlussen();
+    await loadMijnKlussen({ force: true });
     await loadKlussen();
   }
 }
@@ -4572,7 +4599,7 @@ function onAannemerReviewFilterChange() {
   _aannemerReviewFeedState = {
     zoek: (document.getElementById('ap-rf-zoek')?.value || '').trim().toLowerCase(),
     minScore: Number(document.getElementById('ap-rf-minscore')?.value || 0),
-    onlyVerified: !!document.getElementById('ap-rf-verified')?.checked,
+    onlyVerified: false,
     sort: String(document.getElementById('ap-rf-sort')?.value || 'relevant'),
   };
   const current = getActiveAannemerForProfile();
@@ -4729,7 +4756,7 @@ function renderAannemerReviews(a) {
           }).join('')}
         </div>
       </div>
-      <div style="margin-top:10px;display:grid;grid-template-columns:1.2fr .8fr .8fr 1fr;gap:8px;">
+      <div style="margin-top:10px;display:grid;grid-template-columns:1.4fr .9fr .9fr;gap:8px;">
         <input id="ap-rf-zoek" class="form-input" style="font-size:12px;padding:8px 10px;" placeholder="Zoek in reviews" value="${escAttr(_aannemerReviewFeedState.zoek || '')}" oninput="onAannemerReviewFilterChange()">
         <select id="ap-rf-minscore" class="form-input" style="font-size:12px;padding:8px 10px;" onchange="onAannemerReviewFilterChange()">
           <option value="0" ${_aannemerReviewFeedState.minScore===0?'selected':''}>Alle scores</option>
@@ -4737,10 +4764,6 @@ function renderAannemerReviews(a) {
           <option value="4" ${_aannemerReviewFeedState.minScore===4?'selected':''}>4.0+</option>
           <option value="4.5" ${_aannemerReviewFeedState.minScore===4.5?'selected':''}>4.5+</option>
         </select>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--gray-border);border-radius:10px;padding:0 10px;background:#fff;">
-          <input id="ap-rf-verified" type="checkbox" ${_aannemerReviewFeedState.onlyVerified?'checked':''} onchange="onAannemerReviewFilterChange()">
-          Geverifieerd
-        </label>
         <select id="ap-rf-sort" class="form-input" style="font-size:12px;padding:8px 10px;" onchange="onAannemerReviewFilterChange()">
           <option value="relevant" ${_aannemerReviewFeedState.sort==='relevant'?'selected':''}>Meest relevant</option>
           <option value="recent" ${_aannemerReviewFeedState.sort==='recent'?'selected':''}>Meest recent</option>
@@ -4793,6 +4816,20 @@ const REVIEWS_PAGE_FALLBACK = [
   { naam: 'Jeroen L.', stad: 'Rotterdam', score: 4.8, tekst: 'Aannemer dacht actief mee en werkte erg netjes.', datum: '12 dagen geleden' },
   { naam: 'Fatima A.', stad: 'Den Haag', score: 4.7, tekst: 'Fijne samenwerking, resultaat is precies wat we wilden.', datum: '2 weken geleden' },
 ];
+const reviewsPageFilterState = {
+  zoek: '',
+  minScore: 0,
+  verifiedMode: 'all',
+  sort: 'recent',
+};
+
+function onReviewsPageFilterChange() {
+  reviewsPageFilterState.zoek = (document.getElementById('rv-filter-search')?.value || '').trim().toLowerCase();
+  reviewsPageFilterState.minScore = Number(document.getElementById('rv-filter-score')?.value || 0);
+  reviewsPageFilterState.verifiedMode = String(document.getElementById('rv-filter-verified')?.value || 'all');
+  reviewsPageFilterState.sort = String(document.getElementById('rv-filter-sort')?.value || 'recent');
+  renderReviewsPage();
+}
 
 function getReviewsDimensionSnapshot() {
   const dims = [
@@ -4876,7 +4913,33 @@ function renderReviewsPage() {
     });
   });
 
-  const items = (dynamic.length ? dynamic : REVIEWS_PAGE_FALLBACK).slice(0, 12);
+  const baseItems = (dynamic.length ? dynamic : REVIEWS_PAGE_FALLBACK).slice(0, 24);
+  let items = [...baseItems];
+  if (reviewsPageFilterState.minScore > 0) {
+    items = items.filter(r => Number(r.score || 0) >= reviewsPageFilterState.minScore);
+  }
+  if (reviewsPageFilterState.verifiedMode === 'verified') {
+    items = items.filter(r => r.verified === true);
+  }
+  if (reviewsPageFilterState.zoek) {
+    const q = reviewsPageFilterState.zoek;
+    items = items.filter(r =>
+      String(r.naam || '').toLowerCase().includes(q) ||
+      String(r.stad || '').toLowerCase().includes(q) ||
+      String(r.tekst || '').toLowerCase().includes(q)
+    );
+  }
+  const byTs = (r) => {
+    if (!r.aangemaakt) return 0;
+    const t = new Date(r.aangemaakt).getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
+  const sortMode = reviewsPageFilterState.sort || 'recent';
+  if (sortMode === 'score_desc') items.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+  else if (sortMode === 'score_asc') items.sort((a, b) => Number(a.score || 0) - Number(b.score || 0));
+  else items.sort((a, b) => byTs(b) - byTs(a));
+  items = items.slice(0, 12);
+
   const avg = items.length ? (items.reduce((s, r) => s + Number(r.score || 0), 0) / items.length) : 0;
   const regions = new Set(items.map(r => String(r.stad || '').trim().toLowerCase()).filter(Boolean));
   const verifiedCount = items.filter(r => r.verified === true).length;
