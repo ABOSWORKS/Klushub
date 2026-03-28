@@ -1615,22 +1615,28 @@ async function sendEmailNotification(type, recipientEmail, data) {
    * @param {string} recipientEmail - Who to send email to
    * @param {object} data - Context data (klusId, aannemer, etc)
    */
-  if (!sb || !recipientEmail) return; // Demo mode or no email
+  if (!sb || !recipientEmail) return;
 
   try {
-    // Use Supabase Edge Function or fallback to demo mode
-    const { data: result, error } = await sb.functions.invoke('resend-email', {
-      body: { type, recipient_email: recipientEmail, data }
-    });
-
-    if (error) {
-      console.warn('Email notification failed (demo mode):', error.message);
-      // In production, this would be logged to error tracking
-      // For now, fail silently so UI doesn't break
+    let body;
+    if (type === 'job_posted') {
+      // Huidig deployed Edge Function verwacht dit exacte formaat
+      body = {
+        klus_id: data.klus_id || '',
+        beheer_token: data.beheer_token || '',
+        email_klant: recipientEmail,
+        omschrijving: data.omschrijving || ''
+      };
+    } else {
+      // Nieuw formaat voor bid_received, bid_accepted, review_posted
+      // (vereist nieuwe Edge Function versie — werkend zodra gedeployed)
+      body = { type, recipient_email: recipientEmail, data };
     }
+    const { data: result, error } = await sb.functions.invoke('resend-email', { body });
+    if (error) console.warn('[email]', type, 'failed:', error.message);
+    else console.log('[email]', type, 'sent to', recipientEmail);
   } catch(e) {
-    // Network/function error - fail silently
-    console.warn('Email system unavailable:', e.message);
+    console.warn('[email] unavailable:', e.message);
   }
 }
 
@@ -2429,8 +2435,9 @@ async function insertKlus(payload, btnId) {
     const customerEmail = payload.email_klant || payload.email || '';
     if (customerEmail) {
       sendEmailNotification('job_posted', customerEmail, {
-        job_title: payload.omschrijving || 'Nieuwe klus',
-        manage_link: window.location.origin + '?beheer=' + data.id + '&token=' + beheerToken,
+        klus_id: data.id,
+        beheer_token: beheerToken,
+        omschrijving: payload.omschrijving || 'Nieuwe klus',
         voornaam: payload.naam_klant || 'daar'
       }).catch(e => console.warn('Email send failed:', e));
     }
@@ -2464,23 +2471,36 @@ async function loadMijnKlussen() {
     return;
   }
 
-  // Aanbiedingen ophalen (samen met gekoppelde klus data)
+  // Aanbiedingen ophalen (split query: nested select hangt als klus gesloten is + RLS)
   let data, error;
   try {
-    const TIMEOUT = 6000;
+    const TIMEOUT = 8000;
     const tout = new Promise((_, rej) => setTimeout(() => rej(new Error('aanbiedingen-timeout')), TIMEOUT));
+    // Stap 1: haal eigen aanbiedingen op (geen nested join — vermijdt RLS-conflict op klussen)
     const result = await Promise.race([
-      sb.from('aanbiedingen').select('*, klussen(*)').eq('aannemer_id', currentUser.id).order('aangemaakt', { ascending: false }),
+      sb.from('aanbiedingen').select('id,klus_id,prijs,doorlooptijd,bericht,status,aangemaakt').eq('aannemer_id', currentUser.id).order('aangemaakt', { ascending: false }),
       tout
     ]);
-    data = result.data; error = result.error;
+    if (result.error) { error = result.error; } else if (result.data && result.data.length > 0) {
+      // Stap 2: haal bijbehorende klussen op (apart, zonder RLS-beperking op status)
+      const klusIds = result.data.map(a => a.klus_id).filter(Boolean);
+      const klusRes = await Promise.race([
+        sb.from('klussen').select('id,omschrijving,stad,postcode,budget,status,deadline').in('id', klusIds),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('klussen-lookup-timeout')), 5000))
+      ]).catch(() => ({ data: [] }));
+      const klusMap = {};
+      (klusRes.data || []).forEach(k => { klusMap[k.id] = k; });
+      data = result.data.map(a => ({ ...a, klussen: klusMap[a.klus_id] || null }));
+    } else {
+      data = result.data || [];
+    }
   } catch(e) {
     body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="wifi-off" style="width:40px;height:40px;opacity:0.4;margin:0 auto 12px"></i></div><div style="font-size:15px;font-weight:600">Verbinding traag</div><p style="font-size:13px;color:var(--gray-text);margin-top:6px">Probeer het opnieuw.</p><button class="btn-p" style="margin-top:14px;font-size:13px;padding:8px 18px" onclick="loadMijnKlussen()">Opnieuw proberen</button></div>';
     if (window.lucide) lucide.createIcons();
     return;
   }
 
-  if (error) { body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt</div></div>'; return; }
+  if (error) { body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt: ' + escHtml(error.message) + '</div></div>'; return; }
   
   if (!data || data.length === 0) {
     body.innerHTML = `
@@ -3040,35 +3060,49 @@ async function submitAanbieding() {
   const btn = document.getElementById('m-send-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
-    if (!sb || !currentKlusId || currentKlusId.startsWith('demo')) {
+    // Demo detectie: geen sb, geen ID, of geen geldig UUID-formaat
+    var isRealJob = sb && currentKlusId && /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(currentKlusId);
+    if (!isRealJob) {
       await new Promise(r => setTimeout(r, 700));
-      closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo modus)'); return;
+      closeModal(); showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd! (demo)'); return;
     }
-    const TIMEOUT = 8000;
+    if (!currentUser || !currentUser.id) {
+      showToast('<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Profiel niet geladen — log opnieuw in', true); return;
+    }
+    var beschikbaar = document.getElementById('m-beschikbaar') ? document.getElementById('m-beschikbaar').value || null : null;
+    var payload = { klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop || null, bericht: bericht || null };
+    if (beschikbaar) payload.beschikbaar = beschikbaar;
+
+    const TIMEOUT = 12000;
     const tout = new Promise((_, rej) => setTimeout(() => rej(new Error('aanbieding-timeout')), TIMEOUT));
     const { data: bidData, error } = await Promise.race([
-      sb.from('aanbiedingen').insert({ klus_id: currentKlusId, aannemer_id: currentUser.id, prijs: parseInt(prijs), doorlooptijd: doorloop, bericht }).select(),
+      sb.from('aanbiedingen').insert(payload).select('id'),
       tout
     ]);
     if (error) {
-      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + error.message, true);
+      var errMsg = error.message || 'onbekende fout';
+      if (errMsg.includes('duplicate') || errMsg.includes('unique')) errMsg = 'Je hebt al een aanbieding voor deze klus verstuurd.';
+      else if (errMsg.includes('violates row-level security')) errMsg = 'Niet geautoriseerd — log opnieuw in als aannemer.';
+      showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>' + errMsg, true);
     } else {
       closeModal();
       showToast('<i data-lucide="check-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Aanbieding verstuurd!');
-      // Email notificatie fire-and-forget (mag falen zonder UX te breken)
-      sb.from('klussen').select('email_klant, omschrijving').eq('id', currentKlusId).single().then(function(res) {
+      // Email notificatie fire-and-forget
+      sb.from('klussen').select('email_klant,omschrijving,naam_klant').eq('id', currentKlusId).single().then(function(res) {
         if (res.data && res.data.email_klant) {
           sendEmailNotification('bid_received', res.data.email_klant, {
-            omschrijving: res.data.omschrijving,
-            aannemer: { voornaam: currentUser.voornaam || 'Een vakman', achternaam: currentUser.achternaam || '', rating: currentUser.score || 0 },
-            prijs: prijs, doorloop: doorloop
+            aannemer_voornaam: currentUser.voornaam || 'Een vakman',
+            aannemer_achternaam: currentUser.achternaam || '',
+            aannemer_rating: currentUser.avg || 0,
+            prijs: prijs, doorloop: doorloop || '—',
+            omschrijving: res.data.omschrijving || ''
           }).catch(function(e) { console.warn('Bid email failed:', e); });
         }
       }).catch(function(e) { console.warn('Klus email lookup failed:', e); });
     }
   } catch(e) {
     console.warn('[submitAanbieding] Fout of timeout:', e.message);
-    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Verbinding traag — probeer opnieuw', true);
+    showToast('<i data-lucide="x-circle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>Versturen mislukt: ' + (e.message || 'probeer opnieuw'), true);
   } finally {
     btn.disabled = false; btn.innerHTML = 'Aanbieding versturen ✓';
   }
