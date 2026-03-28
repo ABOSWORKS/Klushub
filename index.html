@@ -1547,6 +1547,10 @@ function getKlusLoadTimeoutMs() {
   return KLUS_LOAD_TIMEOUT_MS;
 }
 
+function isDemoFallbackEnabled() {
+  return String(window.__KLUSHUB_ALLOW_DEMO_FALLBACK || '0') === '1';
+}
+
 function resetPublishButton(btnId) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
@@ -1595,11 +1599,12 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
   if (!fnName) return;
   const functionUrl = `${String(SUPABASE_URL || '').replace(/\/$/, '')}/functions/v1/${encodeURIComponent(fnName)}`;
   const sessionToken = sb?.auth?.getSession ? (await sb.auth.getSession())?.data?.session?.access_token : null;
-  const authToken = sessionToken || SUPABASE_ANON;
+  const useSessionToken = String(window.__KLUSHUB_EMAIL_USE_SESSION_TOKEN || '0') === '1';
+  const authToken = (useSessionToken && sessionToken) ? sessionToken : SUPABASE_ANON;
   const hasJwtLikeToken = typeof authToken === 'string' && authToken.split('.').length === 3;
   trackEvent('email_chain_auth_context', {
     klus_id: klusId,
-    auth_mode: sessionToken ? 'session_token' : 'anon_token',
+    auth_mode: (useSessionToken && sessionToken) ? 'session_token_opt_in' : 'legacy_anon_token',
     jwt_like: hasJwtLikeToken,
     function_url: functionUrl,
   });
@@ -1640,14 +1645,22 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
     let detailBody = null;
     try {
       const text = await response.text();
-      detailBody = text ? JSON.parse(text) : null;
+      if (text) {
+        try {
+          detailBody = JSON.parse(text);
+        } catch {
+          detailBody = { raw: text };
+        }
+      } else {
+        detailBody = null;
+      }
     } catch (parseErr) {
       detailBody = null;
     }
     if (!response.ok) {
       const detailText = typeof detailBody === 'string'
         ? detailBody
-        : (detailBody?.error || detailBody?.message || detailBody?.details || detailBody?.likelyCause || '');
+        : (detailBody?.error || detailBody?.message || detailBody?.details || detailBody?.likelyCause || detailBody?.raw || '');
       trackEvent('email_chain_failed', {
         klus_id: klusId,
         function_name: fnName,
@@ -1658,7 +1671,7 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
       console.warn('E-mailketen versturen mislukt:', { status: response.status, detailBody });
       const errMsg = `${String(response.status)} ${String(detailText || '')}`.toLowerCase();
       if (response.status === 401 || response.status === 403) {
-        warnEmailFailure('Klus geplaatst, maar e-mailendpoint autorisatie faalde (401/403). Controleer function JWT-instelling en keys.');
+        warnEmailFailure('Klus geplaatst, maar e-mailendpoint autorisatie faalde (401/403). Controleer verify-jwt instelling en legacy anon-key.');
       } else
       if (errMsg.includes('test mode') || errMsg.includes('verify') || errMsg.includes('domain')) {
         warnEmailFailure('Klus geplaatst, maar e-maildomein staat nog niet correct ingesteld. Controleer Resend domain + from-adres.');
@@ -1794,9 +1807,15 @@ async function loadKlussen(reset = true) {
   const loadStartedAt = Date.now();
   trackEvent('klussen_load_started', { reset, offset: klussensOffset });
   if (!sb) {
-    renderDemoKlussen();
-    setLoadMoreVisibility(false);
-    trackEvent('klussen_load_demo_fallback', { reset });
+    if (isDemoFallbackEnabled()) {
+      renderDemoKlussen();
+      setLoadMoreVisibility(false);
+      trackEvent('klussen_load_demo_fallback', { reset });
+    } else {
+      renderKlussenLoadErrorState('Dataverbinding is nog niet actief. Controleer Supabase-instellingen en probeer opnieuw.');
+      setLoadMoreVisibility(false);
+      trackEvent('klussen_load_failed', { reset, reason: 'supabase_not_initialized' });
+    }
     return false;
   }
   if (klussenLoadPromise) {
@@ -4740,7 +4759,7 @@ function updateNavFoto() {
   updateNavAuth();
   startDevAnalyticsLoop();
   if (isDevAnalyticsEnabled()) toggleDevAnalytics(true);
-  if (!ok) renderDemoKlussen();
+  if (!ok) console.warn('Supabase niet actief. Demo-fallback staat standaard uit; live foutstate wordt getoond.');
   if (window.lucide) lucide.createIcons();
 
   // Controleer of er een "Magische Beheer Link" in de URL staat!
