@@ -835,23 +835,36 @@ input[type="range"]{width:100%;accent-color:var(--blue-light);cursor:pointer}
       </div>
     </div>
     <div id="reviewsTrustSnapshot" style="margin-bottom:16px;"></div>
-    <div id="reviewsPageFilters" style="display:grid;grid-template-columns:1.2fr .9fr .9fr .9fr;gap:8px;margin-bottom:12px;">
-      <input id="rv-filter-search" class="form-input" style="font-size:13px;padding:10px;" placeholder="Zoek op stad, aannemer of reviewtekst" oninput="onReviewsPageFilterChange()">
-      <select id="rv-filter-score" class="form-input" style="font-size:13px;padding:10px;" onchange="onReviewsPageFilterChange()">
-        <option value="0">Alle scores</option>
-        <option value="4">4.0+</option>
-        <option value="4.5">4.5+</option>
-      </select>
-      <select id="rv-filter-verified" class="form-input" style="font-size:13px;padding:10px;" onchange="onReviewsPageFilterChange()">
-        <option value="all">Alle reviews</option>
-        <option value="verified">Alleen geverifieerd</option>
-      </select>
-      <select id="rv-filter-sort" class="form-input" style="font-size:13px;padding:10px;" onchange="onReviewsPageFilterChange()">
-        <option value="recent">Meest recent</option>
-        <option value="score_desc">Hoogste score</option>
-        <option value="score_asc">Laagste score</option>
-      </select>
+    <div id="reviewsPageFilters" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;align-items:flex-end;">
+      <label style="display:flex;flex-direction:column;gap:4px;min-width:240px;flex:1;">
+        <span style="font-size:11px;color:var(--gray-text);font-weight:700;letter-spacing:.4px;text-transform:uppercase;">Zoeken</span>
+        <input id="rv-filter-search" class="form-input" style="font-size:13px;padding:10px;" placeholder="Zoek op stad, aannemer of reviewtekst" oninput="onReviewsPageFilterChange()">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;min-width:160px;">
+        <span style="font-size:11px;color:var(--gray-text);font-weight:700;letter-spacing:.4px;text-transform:uppercase;">Min score</span>
+        <select id="rv-filter-score" class="form-input" style="font-size:13px;padding:10px;" onchange="onReviewsPageFilterChange()">
+          <option value="0">Alle scores</option>
+          <option value="4">4.0+</option>
+          <option value="4.5">4.5+</option>
+        </select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;min-width:180px;">
+        <span style="font-size:11px;color:var(--gray-text);font-weight:700;letter-spacing:.4px;text-transform:uppercase;">Review type</span>
+        <select id="rv-filter-verified" class="form-input" style="font-size:13px;padding:10px;" onchange="onReviewsPageFilterChange()">
+          <option value="all">Alle reviews</option>
+          <option value="verified">Alleen geverifieerd</option>
+        </select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;min-width:170px;">
+        <span style="font-size:11px;color:var(--gray-text);font-weight:700;letter-spacing:.4px;text-transform:uppercase;">Sorteren</span>
+        <select id="rv-filter-sort" class="form-input" style="font-size:13px;padding:10px;" onchange="onReviewsPageFilterChange()">
+          <option value="recent">Meest recent</option>
+          <option value="score_desc">Hoogste score</option>
+          <option value="score_asc">Laagste score</option>
+        </select>
+      </label>
     </div>
+    <div id="rv-active-filters" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
     <div id="reviewsPageList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;"></div>
     <div style="margin-top:16px;background:#fff;border:1px dashed var(--gray-border);border-radius:14px;padding:14px;">
       <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:4px;">Nog geen data in productie?</div>
@@ -1393,6 +1406,7 @@ const AANBIEDING_RECOVERY_TIMEOUT_MS = 1600;
 const AANBIEDING_RECOVERY_DELAYS_MS = [350, 900];
 const MIJN_AANBIEDINGEN_MAX_INFLIGHT_MS = 7000;
 const AANBIEDING_BUTTON_HTML = 'Aanbieding versturen ✓';
+const AANBIEDINGEN_CACHE_KEY = 'klushub_mijn_aanbiedingen_cache';
 const KLUS_LOAD_VARIANT_TIMEOUT_MS = 5500;
 const KLUS_LOAD_RESCUE_TIMEOUT_MS = 1800;
 const KLUS_PUBLISH_RECOVERY_DELAYS_MS = [350, 900];
@@ -1705,6 +1719,25 @@ async function findRecentAanbieding({ klusId, aannemerId, prijs, doorlooptijd, b
   }
 }
 
+function readMijnAanbiedingenCache() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(AANBIEDINGEN_CACHE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberMijnAanbieding(aanbieding) {
+  if (!aanbieding) return;
+  const list = readMijnAanbiedingenCache();
+  const id = aanbieding.id || `tmp-${Date.now()}`;
+  const next = [{ ...aanbieding, id, cached_at: Date.now() }, ...list.filter(x => x && x.id !== id)].slice(0, 40);
+  try {
+    localStorage.setItem(AANBIEDINGEN_CACHE_KEY, JSON.stringify(next));
+  } catch {}
+}
+
 async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving }) {
   if (!sb || !klusId || !beheerToken || !email) {
     trackEvent('email_chain_skipped', {
@@ -1749,6 +1782,56 @@ async function triggerKlusEmailChain({ klusId, beheerToken, email, omschrijving 
     showToast(`<i data-lucide="alert-triangle" style="width:15px;height:15px;stroke:currentColor;fill:none;display:inline-block;vertical-align:-3px;margin-right:5px;"></i>${message}`, true);
   };
   try {
+    if (sb?.functions?.invoke) {
+      try {
+        const invokeResult = await withTimeout(
+          sb.functions.invoke(fnName, {
+            body: {
+              klus_id: klusId,
+              beheer_token: beheerToken,
+              email_klant: email,
+              omschrijving: omschrijving || '',
+              request_id: requestId,
+            },
+          }),
+          EMAIL_CHAIN_TIMEOUT_MS,
+          'E-mailketen invoke'
+        );
+        const invokeError = invokeResult?.error || null;
+        if (!invokeError) {
+          window.__KH_LAST_EMAIL_CHAIN = {
+            ok: true,
+            requestId,
+            status: 200,
+            detail: invokeResult?.data || null,
+            mode: 'supabase_functions_invoke',
+            attempts: [{ attempt: 1, mode: 'supabase_functions_invoke', status: 200, reason: 'primary' }],
+            at: Date.now(),
+          };
+          trackEvent('email_chain_succeeded', {
+            klus_id: klusId,
+            function_name: fnName,
+            request_id: requestId,
+            request_mode: 'supabase_functions_invoke',
+          });
+          return;
+        }
+        trackEvent('email_chain_invoke_failed', {
+          klus_id: klusId,
+          function_name: fnName,
+          reason: String(invokeError?.message || 'invoke_failed'),
+          request_id: requestId,
+        });
+      } catch (invokeErr) {
+        trackEvent('email_chain_invoke_failed', {
+          klus_id: klusId,
+          function_name: fnName,
+          reason: String(invokeErr?.message || 'invoke_timeout'),
+          request_id: requestId,
+        });
+      }
+    }
+
     const attempts = [];
     const parseDetailBody = async (response) => {
       try {
@@ -2645,9 +2728,17 @@ function buildKlusCard(k) {
   const initials = ((k.naam_klant || 'K')[0]).toUpperCase();
 
   let distanceHtml = '';
-  if (filterState.lat !== null && filterState.lng !== null && k.lat && k.lng) {
-    const d = haversineKm(filterState.lat, filterState.lng, k.lat, k.lng);
-    distanceHtml = `<div class="c-meta-item"><i data-lucide="map-pin" style="width:14px;height:14px"></i> <strong>${escHtml(k.stad || k.postcode || '—')}</strong> <span style="color:var(--blue-light);font-weight:700;margin-left:4px;">• ${d.toFixed(1)} km verderop</span></div>`;
+  if (filterState.lat !== null && filterState.lng !== null) {
+    let target = null;
+    if (k.lat && k.lng) target = { lat: Number(k.lat), lng: Number(k.lng) };
+    else if (k.stad) {
+      const stadCoords = getStadCoords(k.stad);
+      if (stadCoords) target = stadCoords;
+    }
+    if (target) {
+      const d = haversineKm(filterState.lat, filterState.lng, target.lat, target.lng);
+      distanceHtml = `<div class="c-meta-item"><i data-lucide="map-pin" style="width:14px;height:14px"></i> <strong>${escHtml(k.stad || k.postcode || '—')}</strong> <span style="color:var(--blue-light);font-weight:700;margin-left:4px;">• ${d.toFixed(1)} km verderop</span></div>`;
+    }
   }
 
   return `
@@ -3060,9 +3151,15 @@ async function loadMijnKlussen(options = {}) {
   if (!isLatestLoad()) return;
 
   if (error) {
-    body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt</div><p style="font-size:13px;margin-top:6px">Probeer het opnieuw over enkele seconden.</p><button class="btn-p" style="font-size:13px;padding:8px 16px;margin-top:12px" onclick="loadMijnKlussen({ force: true })">Opnieuw laden</button></div>';
-    if (window.lucide) lucide.createIcons();
-    return;
+    const cached = readMijnAanbiedingenCache();
+    if (cached.length > 0) {
+      data = cached;
+      error = null;
+    } else {
+      body.innerHTML = '<div class="mkp-empty"><div class="e-ico"><i data-lucide="alert-circle" style="width:40px;height:40px;color:#DC2626;margin:0 auto 12px"></i></div><div>Laden mislukt</div><p style="font-size:13px;margin-top:6px">Probeer het opnieuw over enkele seconden.</p><button class="btn-p" style="font-size:13px;padding:8px 16px;margin-top:12px" onclick="loadMijnKlussen({ force: true })">Opnieuw laden</button></div>';
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
   }
   
   if (!data || data.length === 0) {
@@ -3963,6 +4060,16 @@ async function submitAanbieding() {
       return;
     }
     closeModal();
+    rememberMijnAanbieding({
+      klus_id: klusIdSnapshot,
+      aannemer_id: aannemerId,
+      prijs: parseInt(prijs),
+      doorlooptijd: doorloop,
+      bericht,
+      status: 'in_behandeling',
+      aangemaakt: new Date().toISOString(),
+      klussen: null,
+    });
     trackEvent('aanbieding_submit_succeeded', {
       mode: 'live',
       klus_id: klusIdSnapshot || null,
@@ -3987,6 +4094,10 @@ async function submitAanbieding() {
       }
       if (recoveredAanbieding?.id) {
         closeModal();
+        rememberMijnAanbieding({
+          ...recoveredAanbieding,
+          klussen: null,
+        });
         trackEvent('aanbieding_submit_recovered_after_timeout', {
           klus_id: klusIdSnapshot || null,
           aanbieding_id: recoveredAanbieding.id,
@@ -4831,6 +4942,18 @@ function onReviewsPageFilterChange() {
   renderReviewsPage();
 }
 
+function renderReviewsActiveFilters() {
+  const host = document.getElementById('rv-active-filters');
+  if (!host) return;
+  const tags = [];
+  if (reviewsPageFilterState.zoek) tags.push(`Zoek: ${reviewsPageFilterState.zoek}`);
+  if (reviewsPageFilterState.minScore > 0) tags.push(`Score: ${reviewsPageFilterState.minScore.toFixed(1)}+`);
+  if (reviewsPageFilterState.verifiedMode === 'verified') tags.push('Alleen geverifieerd');
+  const sortLabelMap = { recent: 'Meest recent', score_desc: 'Hoogste score', score_asc: 'Laagste score' };
+  tags.push(`Sortering: ${sortLabelMap[reviewsPageFilterState.sort] || 'Meest recent'}`);
+  host.innerHTML = tags.map(tag => `<span style="font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--gray-border);background:#fff;color:var(--gray-text);">${escHtml(tag)}</span>`).join('');
+}
+
 function getReviewsDimensionSnapshot() {
   const dims = [
     { key: 'avg_kwaliteit', label: 'Kwaliteit' },
@@ -4862,7 +4985,7 @@ function renderTrustSnapshotPanel(metrics) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
         <div>
           <h3 style="margin:0;font-size:20px;font-family:'Barlow Condensed',sans-serif;font-weight:900;color:var(--text-dark);">Trust Snapshot</h3>
-          <p style="margin:4px 0 0;font-size:13px;color:var(--gray-text);line-height:1.5;">Waarom klanten hier sneller zeker kiezen: direct inzicht in kwaliteit, communicatie, planning en recente prestaties in jouw regio.</p>
+          <p style="margin:4px 0 0;font-size:13px;color:var(--gray-text);line-height:1.5;">Dit trust-overzicht vertaalt reviews naar 1 helder betrouwbaarheidssignaal: scorekwaliteit, geverifieerde ratio en recente trend.</p>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <span style="font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--gray-border);background:#F8FAFF;color:var(--blue-dark);">${statusLabel}</span>
@@ -4939,6 +5062,7 @@ function renderReviewsPage() {
   else if (sortMode === 'score_asc') items.sort((a, b) => Number(a.score || 0) - Number(b.score || 0));
   else items.sort((a, b) => byTs(b) - byTs(a));
   items = items.slice(0, 12);
+  renderReviewsActiveFilters();
 
   const avg = items.length ? (items.reduce((s, r) => s + Number(r.score || 0), 0) / items.length) : 0;
   const regions = new Set(items.map(r => String(r.stad || '').trim().toLowerCase()).filter(Boolean));
@@ -4976,6 +5100,11 @@ function renderReviewsPage() {
     trend,
     dimensions: getReviewsDimensionSnapshot(),
   });
+
+  if (!items.length) {
+    listEl.innerHTML = '<article style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:18px;font-size:13px;color:var(--gray-text);">Geen reviews gevonden met deze filters. Pas je selectie aan voor meer resultaten.</article>';
+    return;
+  }
 
   listEl.innerHTML = items.map(r => `
     <article style="background:#fff;border:1px solid var(--gray-border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;">

@@ -97,3 +97,25 @@
   - `EMAIL_CHAIN_DIAGNOSTICS_OK`
   - `OPEN_KLUSSEN_ISOLATION_OK`
   - `SMOKE_OK`
+
+## 2026-03-28 (qa notes round 2)
+- Probleem opgelost:
+  - Afstand werd niet consequent getoond op open-klussenkaarten.
+  - Reviewfilters waren visueel te compact en onduidelijk in actieve state.
+  - `Mijn aanbiedingen` kreeg nog te vaak alleen een foutscherm i.p.v. bruikbare fallback.
+- Keuze:
+  - Afstand in `buildKlusCard` nu ook via stadscoördinaten als `lat/lng` ontbreekt.
+  - Reviews filters uitgebreid met duidelijke labels + actieve filterchips.
+  - Trust Snapshot copy verduidelijkt naar “wat” en “waarom” voor klanten.
+  - Lokale cache fallback voor mijn-aanbiedingen toegevoegd bij backendfouten.
+  - E-mailketen afgestemd op Supabase config met extra `sb.functions.invoke`-pad vóór fetch-fallback.
+- Analyse:
+  - Live tempmail-check via terminal faalde lokaal op TLS/schannel (`SEC_E_NO_CREDENTIALS`), dus geen betrouwbare endpoint-verificatie vanaf deze shell mogelijk zonder OS-certfix.
+  - Daarom diagnose primair via frontend diagnostics (`__KH_LAST_EMAIL_CHAIN` + request-id correlatie in Supabase Invocations) aangehouden.
+- Testevidence:
+  - `KLUSSEN_REGIO_STRICT_OK`
+  - `REVIEWS_FILTERS_OK`
+  - `REVIEWS_TRUST_SNAPSHOT_OK`
+  - `MIJN_AANBIEDINGEN_RELOAD_OK`
+  - `EMAIL_CHAIN_DIAGNOSTICS_OK`
+  - `SMOKE_OK`
