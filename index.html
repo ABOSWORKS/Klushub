@@ -3071,7 +3071,12 @@ async function loadAannemers() {
       ])
     ]);
     if (aannemersRes.error) throw new Error(aannemersRes.error.message);
-    // Reviews mislukken = geen strafpunt, gewoon leeg
+    // Als reviews query een HTTP-error geeft (bijv. 400 / RLS), val terug naar volledig demo
+    if (reviewsRes.error && reviewsRes.error.message) {
+      console.warn('Reviews tabel onbereikbaar, demo data geladen:', reviewsRes.error.message);
+      renderDemoAannemers();
+      return;
+    }
     const reviewsByAannemer = {};
     (reviewsRes.data || []).forEach(r => {
       if (!reviewsByAannemer[r.aannemer_id]) reviewsByAannemer[r.aannemer_id] = [];
@@ -3131,13 +3136,37 @@ const DEMO_PORTFOLIO = {
   ],
 };
 
+function getPortfolioBySpecialisme(specialisme) {
+  // Fallback portfolio templates op basis van specialisme string — werkt voor echte UUID aannemers
+  const s = (specialisme || '').toLowerCase();
+  if (s.includes('badkamer') || s.includes('sanitair'))
+    return DEMO_PORTFOLIO.d1;
+  if (s.includes('aanbouw') || s.includes('dak') || s.includes('bouw'))
+    return DEMO_PORTFOLIO.d2;
+  if (s.includes('schilder') || s.includes('stuc'))
+    return DEMO_PORTFOLIO.d3;
+  if (s.includes('elektra') || s.includes('elektr'))
+    return DEMO_PORTFOLIO.d4;
+  if (s.includes('keuken'))
+    return DEMO_PORTFOLIO.d5;
+  if (s.includes('vloer') || s.includes('parket'))
+    return DEMO_PORTFOLIO.d6;
+  // Algemeen fallback: mix van kleuren
+  return [
+    {g:'linear-gradient(135deg,#1A3A7A,#2E5FBE)',icon:'hammer',label:'Vakwerk geleverd'},
+    {g:'linear-gradient(135deg,#065f46,#34d399)',icon:'check-circle',label:'Project afgerond'},
+    {g:'linear-gradient(135deg,#7c3aed,#a78bfa)',icon:'home',label:'Klant tevreden'},
+  ];
+}
+
 function buildPortfolioGrid(a) {
   const sec = document.getElementById('ap-portfolio-sec');
   const grid = document.getElementById('ap-portfolio-grid');
   if (!sec || !grid) return;
   // Check voor echte foto_urls array (toekomstige Supabase upload)
   const realFotos = Array.isArray(a.foto_urls) && a.foto_urls.length > 0;
-  const demoFotos = DEMO_PORTFOLIO[a.id];
+  // ID-match of specialisme-match voor demo templates
+  const demoFotos = DEMO_PORTFOLIO[a.id] || getPortfolioBySpecialisme(a.specialisme);
   if (!realFotos && !demoFotos) { sec.style.display = 'none'; return; }
   sec.style.display = 'block';
   if (realFotos) {
@@ -3167,7 +3196,8 @@ function openPortfolioLightbox(url, idx, aannemerId) {
   if (url) {
     inner.innerHTML = `<img src="${escHtml(url)}" style="width:100%;display:block;" alt="Werkfoto">`;
   } else {
-    const fotos = DEMO_PORTFOLIO[aannemerId] || [];
+    const aannemer = allAannemers.find(x => x.id === aannemerId);
+    const fotos = DEMO_PORTFOLIO[aannemerId] || getPortfolioBySpecialisme(aannemer && aannemer.specialisme) || [];
     const f = fotos[idx];
     if (!f) return;
     inner.innerHTML = `<div style="background:${f.g};padding:80px 40px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;min-height:280px;justify-content:center;">
@@ -3279,10 +3309,15 @@ function renderAannemers(lijst) {
 
 function getAnnemerTrustBadges(a) {
   const badges = [];
+  const isPro = a.abonnement === 'pro' || a.abonnement === 'business';
+  // Score-gebaseerd (echte reviews)
   if (a.avg >= 4.5 && a.review_count >= 5)
     badges.push(`<span class="badge-top"><i data-lucide="award" style="width:10px;height:10px;stroke:#7A5E00;fill:none;margin:0;"></i> Top Aannemer</span>`);
   if (a.review_count >= 20)
     badges.push(`<span class="badge-exp"><i data-lucide="star" style="width:10px;height:10px;stroke:#1a4fa0;fill:none;margin:0;"></i> Veel Ervaring</span>`);
+  // Abonnement-gebaseerd (zichtbaar ook zonder reviews — werkt met echte Supabase data)
+  if (isPro && badges.length === 0)
+    badges.push(`<span class="badge-exp"><i data-lucide="shield-check" style="width:10px;height:10px;stroke:#1a4fa0;fill:none;margin:0;"></i> Pro Aannemer</span>`);
   return badges.length ? `<div class="trust-badges">${badges.join('')}</div>` : '';
 }
 
